@@ -10,12 +10,12 @@ const prisma = new PrismaClient();
 passport.use(
   new LocalStrategy(
     {
-      usernameField: 'email',
+      usernameField: 'username',
       passwordField: 'password'
     },
-    async (email, password, done) => {
+    async (username, password, done) => {
       try {
-        const result = await AuthService.login(email, password);
+        const result = await AuthService.login(username, password);
         return done(null, result);
       } catch (error) {
         return done(error, false);
@@ -32,16 +32,17 @@ passport.use(
       secretOrKey: process.env.JWT_SECRET!
     },
     async (payload, done) => {
+      console.log(' payload:', payload)
       try {
         const user = await prisma.user.findUnique({
-          where: { id: payload.id }
+          where: { id_user: payload.id }
         });
 
         if (user) {
           return done(null, {
-            id: user.id,
+            id: user.id_user,
             email: user.email,
-            name: user.name
+            username: user.username
           });
         }
 

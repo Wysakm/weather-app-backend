@@ -5,7 +5,7 @@ export class AuthController {
   // Register
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, username } = req.body;
 
       // Validate input
       if (!email || !password) {
@@ -19,7 +19,7 @@ export class AuthController {
         })
       }
 
-      const result = await AuthService.register(email, password, name);
+      const result = await AuthService.register(email, password, username);
 
       res.status(201).json({
         success: true,

@@ -8,15 +8,18 @@ datasource db {
 }
 
 model User {
-  id_user     String   @id @default(uuid())
-  username    String?
-  email       String   @unique
-  password    String
-  role_id     String
-  phonenumber String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  is_verified Boolean  @default(false)
+  id_user      String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  first_name   String?
+  last_name    String?
+  display_name String?
+  password     String
+  role_id      String
+  phonenumber  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  is_verified  Boolean  @default(false)
 
   // Relations
   role           Role        @relation(fields: [role_id], references: [id_role])
@@ -28,13 +31,19 @@ model User {
 }
 
 model Role {
-  id_role   String @id @default(uuid())
-  type_role String
+  id_role   String   @id @default(uuid())
+  role_name RoleType @default(USER)
 
   // Relations
   users User[]
 
   @@map("role")
+}
+
+enum RoleType {
+  ADMIN
+  USER
+  MODERATOR
 }
 
 model Post {
@@ -60,7 +69,7 @@ model Post {
 }
 
 model Place {
-  id_place      String  @id @default(uuid())
+  id_place      String   @id @default(uuid())
   gg_ref        String?
   name_place    String
   place_type_id String
@@ -70,8 +79,8 @@ model Place {
   district      String?
   sub_district  String?
   place_image   String?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   // Relations
   place_type PlaceType  @relation(fields: [place_type_id], references: [id_place_type])
