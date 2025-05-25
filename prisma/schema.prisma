@@ -8,10 +8,111 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id_user     String   @id @default(uuid())
+  username    String?
+  email       String   @unique
+  password    String
+  role_id     String
+  phonenumber String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  is_verified Boolean  @default(false)
+
+  // Relations
+  role           Role        @relation(fields: [role_id], references: [id_role])
+  posts          Post[]      @relation("UserPosts")
+  approved_posts Post[]      @relation("ApprovedPosts")
+  user_oauth     UserOauth[]
+
+  @@map("user")
+}
+
+model Role {
+  id_role   String @id @default(uuid())
+  type_role String
+
+  // Relations
+  users User[]
+
+  @@map("role")
+}
+
+model Post {
+  id_post     String    @id @default(uuid())
+  id_user     String
+  id_place    String
+  title       String
+  image       String?
+  body        String
+  status      String    @default("pending")
+  display     Boolean   @default(false)
+  approved_by String?
+  approved_at DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  // Relations
+  user     User  @relation("UserPosts", fields: [id_user], references: [id_user])
+  place    Place @relation(fields: [id_place], references: [id_place])
+  approver User? @relation("ApprovedPosts", fields: [approved_by], references: [id_user])
+
+  @@map("post")
+}
+
+model Place {
+  id_place      String  @id @default(uuid())
+  gg_ref        String?
+  name_place    String
+  place_type_id String
+  latitude      Decimal
+  longitude     Decimal
+  province_id   String
+  district      String?
+  sub_district  String?
+  place_image   String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  // Relations
+  place_type PlaceType  @relation(fields: [place_type_id], references: [id_place_type])
+  province   MsProvince @relation(fields: [province_id], references: [id_province])
+  posts      Post[]
+
+  @@map("place")
+}
+
+model PlaceType {
+  id_place_type String @id @default(uuid())
+  type_name     String
+
+  // Relations
+  places Place[]
+
+  @@map("place_type")
+}
+
+model MsProvince {
+  id_province String  @id @default(uuid())
+  name        String
+  latitude    Decimal
+  longitude   Decimal
+
+  // Relations
+  places Place[]
+
+  @@map("ms_province")
+}
+
+model UserOauth {
+  id_oauth         String   @id @default(uuid())
+  provider         String
+  provider_user_id String
+  email            String
+  user_id          String
+  created_at       DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id_user])
+
+  @@map("user_oauth")
 }
