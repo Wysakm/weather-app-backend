@@ -32,7 +32,6 @@ passport.use(
       secretOrKey: process.env.JWT_SECRET!
     },
     async (payload, done) => {
-      console.log(' payload:', payload)
       try {
         const user = await prisma.user.findUnique({
           where: { id_user: payload.id }
@@ -45,7 +44,6 @@ passport.use(
             username: user.username
           });
         }
-
         return done(null, false);
       } catch (error) {
         return done(error, false);
