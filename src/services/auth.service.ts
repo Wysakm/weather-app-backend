@@ -58,7 +58,7 @@ export class AuthService {
   }
 
   // Register user (optimized with single transaction)
-  static async register(email: string, password: string, username: string) {
+  static async register(email: string, password: string, username: string, role = RoleType.USER) {
     // Validate input
     this.validateInput(email, password, username);
 
@@ -71,7 +71,7 @@ export class AuthService {
         select: { id_user: true }
       }),
       prisma.role.findFirst({
-        where: { role_name: RoleType.USER },
+        where: { role_name: role },
         select: { id_role: true }
       })
     ]);
