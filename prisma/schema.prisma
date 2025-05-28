@@ -69,6 +69,54 @@ model Post {
   @@map("post")
 }
 
+model WeatherData {
+  id_weather          String   @id @default(uuid())
+  id_place           String
+  id_province        String?  // เพิ่มฟิลด์นี้
+  weather_code       Int?
+  temperature_2m     Decimal?
+  rain               Decimal?
+  precipitation      Decimal?
+  apparent_temperature Decimal?
+  sunrise            String?
+  sunset             String?
+  uv_index_max       Decimal?
+  rain_sum           Decimal?
+  precipitation_probability_max Int?
+  temperature_2m_min Decimal?
+  temperature_2m_max Decimal?
+  wind_speed_10m_max Decimal?
+  recorded_at        DateTime @default(now())
+  created_at         DateTime @default(now())
+
+  // Relations
+  place    Place       @relation(fields: [id_place], references: [id_place])
+  province MsProvince? @relation(fields: [id_province], references: [id_province])
+
+  @@map("weather_data")
+}
+
+model AqiData {
+  id_aqi     String   @id @default(uuid())
+  id_place   String
+  id_province String? // เพิ่มฟิลด์นี้
+  aqi        Int?
+  pm25       Decimal?
+  pm10       Decimal?
+  no2        Decimal?
+  so2        Decimal?
+  o3         Decimal?
+  co         Decimal?
+  recorded_at DateTime @default(now())
+  created_at  DateTime @default(now())
+
+  // Relations
+  place    Place       @relation(fields: [id_place], references: [id_place])
+  province MsProvince? @relation(fields: [id_province], references: [id_province])
+
+  @@map("aqi_data")
+}
+
 model Place {
   id_place      String   @id @default(uuid())
   gg_ref        String?
@@ -84,9 +132,11 @@ model Place {
   updated_at    DateTime @updatedAt
 
   // Relations
-  place_type PlaceType  @relation(fields: [place_type_id], references: [id_place_type])
-  province   MsProvince @relation(fields: [province_id], references: [id_province])
+  place_type PlaceType     @relation(fields: [place_type_id], references: [id_place_type])
+  province   MsProvince    @relation(fields: [province_id], references: [id_province])
   posts      Post[]
+  weather_data WeatherData[]
+  aqi_data   AqiData[]
 
   @@map("place")
 }
@@ -108,7 +158,9 @@ model MsProvince {
   longitude   Decimal
 
   // Relations
-  places Place[]
+  places       Place[]
+  weather_data WeatherData[]
+  aqi_data     AqiData[]
 
   @@map("ms_province")
 }

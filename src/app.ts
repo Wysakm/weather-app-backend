@@ -4,6 +4,9 @@ import passport from './config/passport.config';
 import authRoutes from './routes/auth.routes';
 import placeTypeRoutes from './routes/placeType.routes';
 import { errorHandler } from './middleware/error.middleware';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 

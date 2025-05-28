@@ -19,6 +19,7 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -30,6 +31,7 @@
     "prisma": "^6.8.2"
   },
   "devDependencies": {
+    "@types/axios": "^0.9.36",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
