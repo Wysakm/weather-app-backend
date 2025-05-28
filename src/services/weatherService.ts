@@ -52,9 +52,13 @@ interface BatchProcessingStats {
 }
 
 export class WeatherService {
-  private intervalId?: NodeJS.Timeout;
+  private timeoutId?: NodeJS.Timeout;
+  private isAutoFetchRunning = false;
+  private shouldContinueAutoFetch = false;
   private readonly API_DELAY = 1000; // 1 วินาทีระหว่างการเรียก API
-  private readonly AUTO_FETCH_INTERVAL = 30 * 60 * 1000; // 30 นาที
+  private readonly AUTO_FETCH_INTERVAL = 3 * 60 * 60 * 1000; // 3 ชั่วโมง (default)
+  private readonly MIN_FETCH_INTERVAL = 5 * 60 * 1000; // 5 นาที (minimum)
+  private readonly MAX_FETCH_INTERVAL = 2 * 60 * 60 * 1000; // 2 ชั่วโมง (maximum)
   private readonly BATCH_SIZE = 5; // จำนวนจังหวัดที่ประมวลผลพร้อมกัน
   private readonly MAX_RETRIES = 3; // จำนวนครั้งสูงสุดในการ retry
   private readonly RETRY_DELAY = 2000; // หน่วงเวลาก่อน retry (milliseconds)
@@ -519,43 +523,110 @@ export class WeatherService {
   }
 
   /**
-   * เริ่มการดึงข้อมูลอัตโนมัติทุก 30 นาที
+   * คำนวณ interval ถัดไปตามผลลัพธ์ของการทำงาน
+   * @param stats สถิติการทำงานล่าสุด
+   * @returns interval สำหรับรอบถัดไป (milliseconds)
+   */
+  private calculateNextInterval(stats: BatchProcessingStats): number {
+    const successRate = (stats.successful / stats.total) * 100;
+    const duration = stats.duration;
+
+    // ถ้าผลลัพธ์ดี ใช้ interval ปกติ
+    if (successRate >= 90 && duration < 60000) { // 60 วินาที
+      return this.AUTO_FETCH_INTERVAL;
+    }
+
+    // ถ้าผลลัพธ์แย่ ขยายเวลา
+    if (successRate < 50) {
+      return Math.min(this.AUTO_FETCH_INTERVAL * 2, this.MAX_FETCH_INTERVAL);
+    }
+
+    // ถ้าใช้เวลานาน ขยายเวลาเล็กน้อย
+    if (duration > 180000) { // 3 นาที
+      return Math.min(this.AUTO_FETCH_INTERVAL * 1.5, this.MAX_FETCH_INTERVAL);
+    }
+
+    return this.AUTO_FETCH_INTERVAL;
+  }
+
+  /**
+   * ฟังก์ชันสำหรับการทำงานแบบ recursive
+   */
+  private async scheduleNextAutoFetch(nextInterval?: number): Promise<void> {
+    if (!this.shouldContinueAutoFetch) {
+      this.isAutoFetchRunning = false;
+      return;
+    }
+
+    const interval = nextInterval || this.AUTO_FETCH_INTERVAL;
+    console.log(`⏰ Next auto-fetch scheduled in ${(interval / 1000 / 60).toFixed(1)} minutes`);
+
+    this.timeoutId = setTimeout(async () => {
+      if (!this.shouldContinueAutoFetch) {
+        this.isAutoFetchRunning = false;
+        return;
+      }
+
+      await this.runAutoFetchCycle();
+    }, interval);
+  }
+
+  /**
+   * เรียกใช้งานหนึ่งรอบของ auto-fetch
+   */
+  private async runAutoFetchCycle(): Promise<void> {
+    const startTime = Date.now();
+    console.log('⏰ Auto-fetching weather data started...');
+    
+    try {
+      const stats = await this.fetchAndStoreWeatherData(true);
+      const duration = (Date.now() - startTime) / 1000;
+      
+      console.log('✅ Auto-fetch completed successfully');
+      console.log(`   📊 Statistics: ${stats.successful}/${stats.total} provinces processed`);
+      console.log(`   ⏱️  Total duration: ${duration.toFixed(2)}s`);
+      
+      // Log warning if success rate is low
+      const successRate = (stats.successful / stats.total) * 100;
+      if (successRate < 80) {
+        console.warn(`⚠️  Low success rate: ${successRate.toFixed(1)}%`);
+      }
+
+      // กำหนด interval ถัดไปตามผลลัพธ์
+      const nextInterval = this.calculateNextInterval(stats);
+      await this.scheduleNextAutoFetch(nextInterval);
+      
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      console.error('❌ Auto-fetch failed:', (error as Error).message);
+      console.error(`   ⏱️  Failed after: ${duration.toFixed(2)}s`);
+      
+      // ในกรณีที่ error ให้ขยาย interval
+      const errorInterval = Math.min(this.AUTO_FETCH_INTERVAL * 2, this.MAX_FETCH_INTERVAL);
+      await this.scheduleNextAutoFetch(errorInterval);
+    }
+  }
+
+  /**
+   * เริ่มการดึงข้อมูลอัตโนมัติแบบ adaptive interval
    */
   startAutoFetch(): void {
-    console.log('🕒 Starting automatic weather data fetching every 30 minutes...');
+    if (this.isAutoFetchRunning) {
+      console.log('⚠️  Auto-fetch is already running');
+      return;
+    }
+
+    console.log('🕒 Starting adaptive automatic weather data fetching...');
     
-    this.intervalId = setInterval(async () => {
-      const startTime = Date.now();
-      console.log('⏰ Auto-fetching weather data started...');
-      
-      try {
-        const stats = await this.fetchAndStoreWeatherData(true);
-        const duration = (Date.now() - startTime) / 1000;
-        
-        console.log('✅ Auto-fetch completed successfully');
-        console.log(`   📊 Statistics: ${stats.successful}/${stats.total} provinces processed`);
-        console.log(`   ⏱️  Total duration: ${duration.toFixed(2)}s`);
-        
-        // Log warning if success rate is low
-        const successRate = (stats.successful / stats.total) * 100;
-        if (successRate < 80) {
-          console.warn(`⚠️  Low success rate: ${successRate.toFixed(1)}%`);
-        }
-        
-      } catch (error) {
-        const duration = (Date.now() - startTime) / 1000;
-        console.error('❌ Auto-fetch failed:', (error as Error).message);
-        console.error(`   ⏱️  Failed after: ${duration.toFixed(2)}s`);
-        
-        // Consider implementing notification system here
-        // this.notifySystemFailure(error);
-      }
-    }, this.AUTO_FETCH_INTERVAL);
+    this.shouldContinueAutoFetch = true;
+    this.isAutoFetchRunning = true;
     
     // Run initial fetch
     console.log('🚀 Running initial data fetch...');
-    this.fetchAndStoreWeatherData(true).catch(error => {
+    this.runAutoFetchCycle().catch(error => {
       console.error('❌ Initial fetch failed:', error);
+      // หากการทำงานครั้งแรกล้มเหลว ให้พยายามใหม่ภายหลัง
+      this.scheduleNextAutoFetch(this.MIN_FETCH_INTERVAL);
     });
   }
 
@@ -563,11 +634,79 @@ export class WeatherService {
    * หยุดการดึงข้อมูลอัตโนมัติ
    */
   stopAutoFetch(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-      console.log('🛑 Stopped automatic weather data fetching');
+    this.shouldContinueAutoFetch = false;
+    
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = undefined;
     }
+    
+    this.isAutoFetchRunning = false;
+    console.log('🛑 Stopped automatic weather data fetching');
+  }
+
+  /**
+   * ตรวจสอบว่า auto-fetch กำลังทำงานอยู่หรือไม่
+   */
+  isAutoFetchActive(): boolean {
+    return this.isAutoFetchRunning;
+  }
+
+  /**
+   * เปลี่ยน interval ของ auto-fetch แบบ dynamic
+   * @param newInterval interval ใหม่ (milliseconds)
+   */
+  updateAutoFetchInterval(newInterval: number): void {
+    if (newInterval < this.MIN_FETCH_INTERVAL) {
+      throw new Error(`Interval too short. Minimum is ${this.MIN_FETCH_INTERVAL / 1000}s`);
+    }
+    
+    if (newInterval > this.MAX_FETCH_INTERVAL) {
+      throw new Error(`Interval too long. Maximum is ${this.MAX_FETCH_INTERVAL / 1000}s`);
+    }
+
+    // อัพเดท AUTO_FETCH_INTERVAL
+    (this as any).AUTO_FETCH_INTERVAL = newInterval;
+    
+    console.log(`📊 Auto-fetch interval updated to ${(newInterval / 1000 / 60).toFixed(1)} minutes`);
+    
+    // หากกำลังทำงานอยู่ ให้รีสตาร์ท
+    if (this.isAutoFetchRunning) {
+      console.log('🔄 Restarting auto-fetch with new interval...');
+      this.stopAutoFetch();
+      setTimeout(() => this.startAutoFetch(), 1000);
+    }
+  }
+
+  /**
+   * บังคับให้ทำ fetch ทันทีโดยไม่รอ interval
+   * @param skipIfRunning ข้าม fetch หากกำลังทำงานอยู่
+   */
+  async triggerImmediateFetch(skipIfRunning = true): Promise<BatchProcessingStats> {
+    if (skipIfRunning && this.isAutoFetchRunning) {
+      throw new Error('Auto-fetch is currently running. Set skipIfRunning=false to force execution.');
+    }
+
+    console.log('🚀 Triggering immediate weather data fetch...');
+    return await this.fetchAndStoreWeatherData(true);
+  }
+
+  /**
+   * รับสถานะการทำงานของ auto-fetch
+   */
+  getAutoFetchStatus(): {
+    isRunning: boolean;
+    currentInterval: number;
+    nextScheduledTime?: Date;
+    hasTimeoutScheduled: boolean;
+  } {
+    return {
+      isRunning: this.isAutoFetchRunning,
+      currentInterval: this.AUTO_FETCH_INTERVAL,
+      hasTimeoutScheduled: this.timeoutId !== undefined,
+      // Note: setTimeout ไม่มี API สำหรับดูเวลาที่เหลือ
+      // อาจต้องเก็บ timestamp เพิ่มเติมหากต้องการความแม่นยำ
+    };
   }
 
   /**
@@ -689,7 +828,7 @@ export class WeatherService {
     };
   }> {
     const stats = {
-      autoFetchRunning: this.intervalId !== undefined,
+      autoFetchRunning: this.isAutoFetchRunning,
       dataFreshness: {} as any,
       provinceCoverage: {} as any
     };

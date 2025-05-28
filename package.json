@@ -11,7 +11,15 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:reset": "prisma migrate reset",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "weather-cli": "ts-node scripts/weather-cli.ts",
+    "weather:start": "ts-node scripts/weather-cli.ts start",
+    "weather:stop": "ts-node scripts/weather-cli.ts stop",
+    "weather:status": "ts-node scripts/weather-cli.ts status",
+    "weather:monitor": "ts-node scripts/weather-cli.ts monitor",
+    "weather:test": "ts-node scripts/weather-cli.ts test",
+    "weather:suggestions": "ts-node scripts/weather-cli.ts suggestions",
+    "weather:fetch": "ts-node scripts/weather-cli.ts fetch"
   },
   "keywords": [],
   "author": "",
