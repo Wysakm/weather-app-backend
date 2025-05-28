@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { placeController } from '../controllers/placeController';
+import { PlaceController } from '../controllers/placeController';
+
+const router = Router();
+const placeController = new PlaceController();
 
 // Validation middleware
 export const validatePlace = (req: Request, res: Response, next: NextFunction): void => {
-  const { name_place, latitude, longitude, type_name, province_name } = req.body;
+  const { name_place, latitude, longitude, place_type_id, gg_ref } = req.body;
   
   if (!name_place || typeof name_place !== 'string') {
     res.status(400).json({ error: 'Name is required and must be a string' });
@@ -22,13 +25,14 @@ export const validatePlace = (req: Request, res: Response, next: NextFunction): 
     return;
   }
 
-  if (!type_name || typeof type_name !== 'string') {
+  if (!place_type_id || typeof place_type_id !== 'string') {
     res.status(400).json({ error: 'Type name is required' });
     return;
   }
 
-  if (!province_name || typeof province_name !== 'string') {
-    res.status(400).json({ error: 'Province name is required' });
+  // Optional: Validate gg_ref if provided
+  if (gg_ref && typeof gg_ref !== 'string') {
+    res.status(400).json({ error: 'Google reference must be a string' });
     return;
   }
   
@@ -56,15 +60,14 @@ export const validatePlaceUpdate = (req: Request, res: Response, next: NextFunct
   next();
 };
 
-// Router setup
-const router = Router();
-
 // Routes
-router.get('/nearby', placeController.getNearbyPlaces);
-router.post('/', authenticateToken, validatePlace, placeController.createPlace);
+router.post('/', validatePlace, placeController.createPlace);
+router.post('/google', placeController.createPlaceFromGoogle);
 router.get('/', placeController.getAllPlaces);
+router.get('/nearby', placeController.getNearbyPlaces);
+router.get('/check-google/:google_place_id', placeController.checkGooglePlace);
 router.get('/:id', placeController.getPlaceById);
-router.put('/:id', authenticateToken, validatePlaceUpdate, placeController.updatePlace);
-router.delete('/:id', authenticateToken, placeController.deletePlace);
+router.put('/:id', validatePlaceUpdate, placeController.updatePlace);
+router.delete('/:id', placeController.deletePlace);
 
 export default router;
