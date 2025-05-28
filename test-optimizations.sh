@@ -6,7 +6,7 @@
 echo "🧪 WeatherService Optimization Testing Script"
 echo "============================================="
 
-BASE_URL="http://localhost:3030/api/weather"
+BASE_URL="http://localhost:3000/api/weather"
 
 echo ""
 echo "1. 🔍 Checking system health..."

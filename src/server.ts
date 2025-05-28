@@ -2,21 +2,18 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from './app';
-import { startWeatherCron } from './jobs/weatherCron';
-import { WeatherService } from './services/weatherService';
+import { startWeatherScheduler } from './scheduler/weatherScheduler';
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 API Documentation: http://localhost:${PORT}/api/places`);
+  console.log(`📊 Health Check: http://localhost:${PORT}/api/weather/health`);
+  console.log(`📈 Statistics: http://localhost:${PORT}/api/weather/statistics`);
   
-  // เริ่ม weather cron job
-  startWeatherCron();
+  // เริ่ม optimized weather scheduler (ใช้ตัวเดียวแทนของเดิม 3 ตัว)
+  startWeatherScheduler();
 
-  // เริ่ม auto fetch หลังจาก server รัน
-  const weatherService = new WeatherService();
-  weatherService.startAutoFetch();
-
-  console.log('Server is running with automatic weather fetching every 30 minutes');
+  console.log('✅ Server is running with optimized automatic weather fetching');
 });

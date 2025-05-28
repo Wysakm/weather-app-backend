@@ -6,16 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const app_1 = __importDefault(require("./app"));
-const weatherCron_1 = require("./jobs/weatherCron");
-const weatherService_1 = require("./services/weatherService");
+const weatherScheduler_1 = require("./scheduler/weatherScheduler");
 const PORT = process.env.PORT || 3000;
 app_1.default.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📝 API Documentation: http://localhost:${PORT}/api/places`);
-    // เริ่ม weather cron job
-    (0, weatherCron_1.startWeatherCron)();
-    // เริ่ม auto fetch หลังจาก server รัน
-    const weatherService = new weatherService_1.WeatherService();
-    weatherService.startAutoFetch();
-    console.log('Server is running with automatic weather fetching every 30 minutes');
+    console.log(`📊 Health Check: http://localhost:${PORT}/api/weather/health`);
+    console.log(`📈 Statistics: http://localhost:${PORT}/api/weather/statistics`);
+    // เริ่ม optimized weather scheduler (ใช้ตัวเดียวแทนของเดิม 3 ตัว)
+    (0, weatherScheduler_1.startWeatherScheduler)();
+    console.log('✅ Server is running with optimized automatic weather fetching');
 });
