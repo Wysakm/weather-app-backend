@@ -47,7 +47,7 @@ export class PlaceTypeController {
               longitude: true,
               province: {
                 select: {
-                  name: true
+                  name: true // เปลี่ยนจาก province_name เป็น name
                 }
               }
             }

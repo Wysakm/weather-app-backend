@@ -3,6 +3,17 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
     return cooked;
 };
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -53,7 +64,7 @@ var PlaceController = /** @class */ (function () {
                 switch (_e.label) {
                     case 0:
                         _e.trys.push([0, 2, , 3]);
-                        _a = req.query, _b = _a.page, page = _b === void 0 ? 1 : _b, _c = _a.limit, limit = _c === void 0 ? 10 : _c, province_id = _a.province_id, place_type_id = _a.place_type_id, search = _a.search;
+                        _a = req.query, _b = _a.page, page = _b === void 0 ? '1' : _b, _c = _a.limit, limit = _c === void 0 ? '10' : _c, province_id = _a.province_id, place_type_id = _a.place_type_id, search = _a.search;
                         skip = (Number(page) - 1) * Number(limit);
                         where = {};
                         if (province_id)
@@ -174,12 +185,73 @@ var PlaceController = /** @class */ (function () {
         }); };
         // POST /api/places - สร้างสถานที่ใหม่
         this.createPlace = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
-            var _a, name_place, latitude, longitude, type_name, province_name, district, sub_district, place_image, placeType, province, place, error_3;
+            var _a, name_place, latitude, longitude, type_name, province_name, district, sub_district, place_image, google_place_id, google_place_data // เพิ่มข้อมูลเพิ่มเติมจาก Google Places
+            , existingPlaceByGoogleId, existingPlaceByName, existingPlaceByCoords, placeType, selectedProvinceId, foundProvince, defaultProvince, place, error_3;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        _b.trys.push([0, 4, , 5]);
-                        _a = req.body, name_place = _a.name_place, latitude = _a.latitude, longitude = _a.longitude, type_name = _a.type_name, province_name = _a.province_name, district = _a.district, sub_district = _a.sub_district, place_image = _a.place_image;
+                        _b.trys.push([0, 11, , 12]);
+                        _a = req.body, name_place = _a.name_place, latitude = _a.latitude, longitude = _a.longitude, type_name = _a.type_name, province_name = _a.province_name, district = _a.district, sub_district = _a.sub_district, place_image = _a.place_image, google_place_id = _a.google_place_id, google_place_data = _a.google_place_data;
+                        // Validate required fields
+                        if (!name_place || !latitude || !longitude || !type_name) {
+                            res.status(400).json({
+                                success: false,
+                                message: 'name_place, latitude, longitude, and type_name are required'
+                            });
+                            return [2 /*return*/];
+                        }
+                        if (!google_place_id) return [3 /*break*/, 2];
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    gg_ref: google_place_id
+                                }
+                            })];
+                    case 1:
+                        existingPlaceByGoogleId = _b.sent();
+                        if (existingPlaceByGoogleId) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with Google Place ID '" + google_place_id + "' already exists",
+                                existingPlace: {
+                                    id: existingPlaceByGoogleId.id_place,
+                                    name: existingPlaceByGoogleId.name_place
+                                }
+                            });
+                            return [2 /*return*/];
+                        }
+                        _b.label = 2;
+                    case 2: return [4 /*yield*/, prisma.place.findFirst({
+                            where: {
+                                name_place: {
+                                    equals: name_place,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        })];
+                    case 3:
+                        existingPlaceByName = _b.sent();
+                        if (existingPlaceByName) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with name '" + name_place + "' already exists"
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    latitude: parseFloat(latitude.toString()),
+                                    longitude: parseFloat(longitude.toString())
+                                }
+                            })];
+                    case 4:
+                        existingPlaceByCoords = _b.sent();
+                        if (existingPlaceByCoords) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with coordinates (" + latitude + ", " + longitude + ") already exists"
+                            });
+                            return [2 /*return*/];
+                        }
                         return [4 /*yield*/, prisma.placeType.findFirst({
                                 where: {
                                     type_name: {
@@ -188,7 +260,7 @@ var PlaceController = /** @class */ (function () {
                                     }
                                 }
                             })];
-                    case 1:
+                    case 5:
                         placeType = _b.sent();
                         if (!placeType) {
                             res.status(400).json({
@@ -197,37 +269,69 @@ var PlaceController = /** @class */ (function () {
                             });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, prisma.msProvince.findFirst()];
-                    case 2:
-                        province = _b.sent();
-                        if (!province) {
+                        selectedProvinceId = void 0;
+                        if (!province_name) return [3 /*break*/, 7];
+                        return [4 /*yield*/, prisma.msProvince.findFirst({
+                                where: {
+                                    name: {
+                                        contains: province_name,
+                                        mode: 'insensitive'
+                                    }
+                                }
+                            })];
+                    case 6:
+                        foundProvince = _b.sent();
+                        if (foundProvince) {
+                            selectedProvinceId = foundProvince.id_province;
+                        }
+                        else {
                             res.status(400).json({
                                 success: false,
-                                message: 'No province found in database'
+                                message: "Province '" + province_name + "' not found"
                             });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, prisma.place.create({
-                                data: {
-                                    name_place: name_place,
-                                    latitude: latitude,
-                                    longitude: longitude,
-                                    place_type_id: placeType.id_place_type,
-                                    province_id: province.id_province,
-                                    district: district,
-                                    sub_district: sub_district,
-                                    place_image: place_image
-                                }
-                            })];
-                    case 3:
+                        return [3 /*break*/, 9];
+                    case 7: return [4 /*yield*/, prisma.msProvince.findFirst({
+                            where: { name: 'Bangkok' }
+                        })];
+                    case 8:
+                        defaultProvince = _b.sent();
+                        if (!defaultProvince) {
+                            res.status(400).json({
+                                success: false,
+                                message: 'No default province found. Please specify province_name'
+                            });
+                            return [2 /*return*/];
+                        }
+                        selectedProvinceId = defaultProvince.id_province;
+                        _b.label = 9;
+                    case 9: return [4 /*yield*/, prisma.place.create({
+                            data: {
+                                name_place: name_place,
+                                latitude: parseFloat(latitude.toString()),
+                                longitude: parseFloat(longitude.toString()),
+                                place_type_id: placeType.id_place_type,
+                                province_id: selectedProvinceId,
+                                district: district || null,
+                                sub_district: sub_district || null,
+                                place_image: place_image || null,
+                                gg_ref: google_place_id || null
+                            },
+                            include: {
+                                place_type: true,
+                                province: true
+                            }
+                        })];
+                    case 10:
                         place = _b.sent();
                         res.status(201).json({
                             success: true,
                             data: place,
                             message: 'Place created successfully'
                         });
-                        return [3 /*break*/, 5];
-                    case 4:
+                        return [3 /*break*/, 12];
+                    case 11:
                         error_3 = _b.sent();
                         console.error('Error creating place:', error_3);
                         res.status(500).json({
@@ -235,99 +339,252 @@ var PlaceController = /** @class */ (function () {
                             message: 'Error creating place',
                             error: error_3.message
                         });
-                        return [3 /*break*/, 5];
-                    case 5: return [2 /*return*/];
+                        return [3 /*break*/, 12];
+                    case 12: return [2 /*return*/];
                 }
             });
         }); };
-        // PUT /api/places/:id - อัปเดตข้อมูลสถานที่
-        this.updatePlace = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
-            var id, updateData, existingPlace, placeType, province, place, error_4;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+        // POST /api/places/google - เพิ่มสถานที่จาก Google Places API
+        this.createPlaceFromGoogle = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
+            var _a, google_place_id, google_place_data, _b, type_name, existingPlace, name, _c, lat, lng, formatted_address, types, photos, vicinity, existingPlaceByName, existingPlaceByCoords, placeType, selectedProvinceId, addressParts, provinceFound, _i, addressParts_1, part, trimmedPart, foundProvince, defaultProvince, placeImage, place, error_4;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
                     case 0:
-                        _a.trys.push([0, 7, , 8]);
-                        id = req.params.id;
-                        updateData = req.body;
-                        return [4 /*yield*/, prisma.place.findUnique({
-                                where: { id_place: id }
-                            })];
-                    case 1:
-                        existingPlace = _a.sent();
-                        if (!existingPlace) {
-                            res.status(404).json({
+                        _d.trys.push([0, 12, , 13]);
+                        _a = req.body, google_place_id = _a.google_place_id, google_place_data = _a.google_place_data, _b = _a.type_name, type_name = _b === void 0 ? 'Tourist Attraction' // default place type
+                         : _b;
+                        // Validate required fields
+                        if (!google_place_id || !google_place_data) {
+                            res.status(400).json({
                                 success: false,
-                                message: 'Place not found'
+                                message: 'google_place_id and google_place_data are required'
                             });
                             return [2 /*return*/];
                         }
-                        if (!updateData.place_type_id) return [3 /*break*/, 3];
-                        return [4 /*yield*/, prisma.placeType.findUnique({
-                                where: { id_place_type: updateData.place_type_id }
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    gg_ref: google_place_id
+                                }
+                            })];
+                    case 1:
+                        existingPlace = _d.sent();
+                        if (existingPlace) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with Google Place ID '" + google_place_id + "' already exists",
+                                existingPlace: {
+                                    id: existingPlace.id_place,
+                                    name: existingPlace.name_place,
+                                    google_place_id: existingPlace.gg_ref
+                                }
+                            });
+                            return [2 /*return*/];
+                        }
+                        name = google_place_data.name, _c = google_place_data.geometry.location, lat = _c.lat, lng = _c.lng, formatted_address = google_place_data.formatted_address, types = google_place_data.types, photos = google_place_data.photos, vicinity = google_place_data.vicinity;
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    name_place: {
+                                        equals: name,
+                                        mode: 'insensitive'
+                                    }
+                                }
                             })];
                     case 2:
-                        placeType = _a.sent();
+                        existingPlaceByName = _d.sent();
+                        if (existingPlaceByName) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with name '" + name + "' already exists",
+                                existingPlace: {
+                                    id: existingPlaceByName.id_place,
+                                    name: existingPlaceByName.name_place
+                                }
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    latitude: lat,
+                                    longitude: lng
+                                }
+                            })];
+                    case 3:
+                        existingPlaceByCoords = _d.sent();
+                        if (existingPlaceByCoords) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with coordinates (" + lat + ", " + lng + ") already exists",
+                                existingPlace: {
+                                    id: existingPlaceByCoords.id_place,
+                                    name: existingPlaceByCoords.name_place
+                                }
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, prisma.placeType.findFirst({
+                                where: {
+                                    type_name: {
+                                        contains: type_name,
+                                        mode: 'insensitive'
+                                    }
+                                }
+                            })];
+                    case 4:
+                        placeType = _d.sent();
                         if (!placeType) {
                             res.status(400).json({
                                 success: false,
-                                message: 'Invalid place type'
+                                message: "Place type '" + type_name + "' not found"
                             });
                             return [2 /*return*/];
                         }
-                        _a.label = 3;
-                    case 3:
-                        if (!updateData.province_id) return [3 /*break*/, 5];
-                        return [4 /*yield*/, prisma.msProvince.findUnique({
-                                where: { id_province: updateData.province_id }
+                        selectedProvinceId = '';
+                        addressParts = (formatted_address === null || formatted_address === void 0 ? void 0 : formatted_address.split(',')) || [];
+                        provinceFound = false;
+                        _i = 0, addressParts_1 = addressParts;
+                        _d.label = 5;
+                    case 5:
+                        if (!(_i < addressParts_1.length)) return [3 /*break*/, 8];
+                        part = addressParts_1[_i];
+                        trimmedPart = part.trim();
+                        return [4 /*yield*/, prisma.msProvince.findFirst({
+                                where: {
+                                    name: {
+                                        contains: trimmedPart,
+                                        mode: 'insensitive'
+                                    }
+                                }
                             })];
-                    case 4:
-                        province = _a.sent();
-                        if (!province) {
+                    case 6:
+                        foundProvince = _d.sent();
+                        if (foundProvince) {
+                            selectedProvinceId = foundProvince.id_province;
+                            provinceFound = true;
+                            return [3 /*break*/, 8];
+                        }
+                        _d.label = 7;
+                    case 7:
+                        _i++;
+                        return [3 /*break*/, 5];
+                    case 8:
+                        if (!!provinceFound) return [3 /*break*/, 10];
+                        return [4 /*yield*/, prisma.msProvince.findFirst({
+                                where: { name: 'Bangkok' }
+                            })];
+                    case 9:
+                        defaultProvince = _d.sent();
+                        if (!defaultProvince) {
                             res.status(400).json({
                                 success: false,
-                                message: 'Invalid province'
+                                message: 'No default province found'
                             });
                             return [2 /*return*/];
                         }
-                        _a.label = 5;
-                    case 5: return [4 /*yield*/, prisma.place.update({
-                            where: { id_place: id },
-                            data: updateData,
-                            include: {
-                                place_type: true,
-                                province: true
-                            }
-                        })];
-                    case 6:
-                        place = _a.sent();
-                        res.json({
+                        selectedProvinceId = defaultProvince.id_province;
+                        _d.label = 10;
+                    case 10:
+                        placeImage = null;
+                        if (photos && photos.length > 0) {
+                            // Store the photo reference for now
+                            placeImage = photos[0].photo_reference;
+                        }
+                        return [4 /*yield*/, prisma.place.create({
+                                data: {
+                                    name_place: name,
+                                    latitude: lat,
+                                    longitude: lng,
+                                    place_type_id: placeType.id_place_type,
+                                    province_id: selectedProvinceId,
+                                    district: vicinity || null,
+                                    sub_district: null,
+                                    place_image: placeImage,
+                                    gg_ref: google_place_id
+                                },
+                                include: {
+                                    place_type: true,
+                                    province: true
+                                }
+                            })];
+                    case 11:
+                        place = _d.sent();
+                        res.status(201).json({
                             success: true,
                             data: place,
-                            message: 'Place updated successfully'
+                            message: 'Place created from Google Places API successfully'
                         });
-                        return [3 /*break*/, 8];
-                    case 7:
-                        error_4 = _a.sent();
+                        return [3 /*break*/, 13];
+                    case 12:
+                        error_4 = _d.sent();
+                        console.error('Error creating place from Google:', error_4);
                         res.status(500).json({
                             success: false,
-                            message: 'Error updating place',
+                            message: 'Error creating place from Google Places API',
                             error: error_4.message
                         });
-                        return [3 /*break*/, 8];
-                    case 8: return [2 /*return*/];
+                        return [3 /*break*/, 13];
+                    case 13: return [2 /*return*/];
+                }
+            });
+        }); };
+        // GET /api/places/check-google/:google_place_id - ตรวจสอบว่าสถานที่จาก Google มีอยู่แล้วหรือไม่
+        this.checkGooglePlace = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
+            var google_place_id, existingPlace, error_5;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        google_place_id = req.params.google_place_id;
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    gg_ref: google_place_id
+                                },
+                                include: {
+                                    place_type: true,
+                                    province: true
+                                }
+                            })];
+                    case 1:
+                        existingPlace = _a.sent();
+                        if (existingPlace) {
+                            res.json({
+                                success: true,
+                                exists: true,
+                                data: existingPlace,
+                                message: 'Place already exists in database'
+                            });
+                        }
+                        else {
+                            res.json({
+                                success: true,
+                                exists: false,
+                                message: 'Place does not exist in database'
+                            });
+                        }
+                        return [3 /*break*/, 3];
+                    case 2:
+                        error_5 = _a.sent();
+                        res.status(500).json({
+                            success: false,
+                            message: 'Error checking Google place',
+                            error: error_5.message
+                        });
+                        return [3 /*break*/, 3];
+                    case 3: return [2 /*return*/];
                 }
             });
         }); };
         // DELETE /api/places/:id - ลบสถานที่
         this.deletePlace = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
-            var id, existingPlace, hasRelatedData, error_5;
+            var id_1, force, existingPlace, hasRelatedData, error_6;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 3, , 4]);
-                        id = req.params.id;
+                        _a.trys.push([0, 6, , 7]);
+                        id_1 = req.params.id;
+                        force = req.query.force;
                         return [4 /*yield*/, prisma.place.findUnique({
-                                where: { id_place: id },
+                                where: { id_place: id_1 },
                                 include: {
                                     _count: {
                                         select: {
@@ -350,43 +607,102 @@ var PlaceController = /** @class */ (function () {
                         hasRelatedData = existingPlace._count.posts > 0 ||
                             existingPlace._count.weather_data > 0 ||
                             existingPlace._count.aqi_data > 0;
-                        if (hasRelatedData) {
+                        // หากมีข้อมูลที่เกี่ยวข้องและไม่มี force parameter
+                        if (hasRelatedData && force !== 'true') {
                             res.status(400).json({
                                 success: false,
-                                message: 'Cannot delete place with related data (posts, weather data, or AQI data)'
+                                message: 'Cannot delete place with related data (posts, weather data, or AQI data). Use ?force=true to force delete.',
+                                relatedData: {
+                                    posts: existingPlace._count.posts,
+                                    weather_data: existingPlace._count.weather_data,
+                                    aqi_data: existingPlace._count.aqi_data
+                                }
                             });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, prisma.place["delete"]({
-                                where: { id_place: id }
-                            })];
+                        if (!(force === 'true' && hasRelatedData)) return [3 /*break*/, 3];
+                        return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: 
+                                        // ลบ posts ที่เกี่ยวข้อง
+                                        return [4 /*yield*/, tx.post.deleteMany({
+                                                where: { id_place: id_1 }
+                                            })];
+                                        case 1:
+                                            // ลบ posts ที่เกี่ยวข้อง
+                                            _a.sent();
+                                            // ลบ weather_data ที่เกี่ยวข้อง
+                                            return [4 /*yield*/, tx.weatherData.deleteMany({
+                                                    where: { id_place: id_1 }
+                                                })];
+                                        case 2:
+                                            // ลบ weather_data ที่เกี่ยวข้อง
+                                            _a.sent();
+                                            // ลบ aqi_data ที่เกี่ยวข้อง
+                                            return [4 /*yield*/, tx.aqiData.deleteMany({
+                                                    where: { id_place: id_1 }
+                                                })];
+                                        case 3:
+                                            // ลบ aqi_data ที่เกี่ยวข้อง
+                                            _a.sent();
+                                            // ลบ place
+                                            return [4 /*yield*/, tx.place["delete"]({
+                                                    where: { id_place: id_1 }
+                                                })];
+                                        case 4:
+                                            // ลบ place
+                                            _a.sent();
+                                            return [2 /*return*/];
+                                    }
+                                });
+                            }); })];
                     case 2:
+                        _a.sent();
+                        res.json({
+                            success: true,
+                            message: 'Place and all related data deleted successfully (force delete)',
+                            deletedData: {
+                                posts: existingPlace._count.posts,
+                                weather_data: existingPlace._count.weather_data,
+                                aqi_data: existingPlace._count.aqi_data
+                            }
+                        });
+                        return [3 /*break*/, 5];
+                    case 3: 
+                    // ลบ place ปกติ (ไม่มีข้อมูลที่เกี่ยวข้อง)
+                    return [4 /*yield*/, prisma.place["delete"]({
+                            where: { id_place: id_1 }
+                        })];
+                    case 4:
+                        // ลบ place ปกติ (ไม่มีข้อมูลที่เกี่ยวข้อง)
                         _a.sent();
                         res.json({
                             success: true,
                             message: 'Place deleted successfully'
                         });
-                        return [3 /*break*/, 4];
-                    case 3:
-                        error_5 = _a.sent();
+                        _a.label = 5;
+                    case 5: return [3 /*break*/, 7];
+                    case 6:
+                        error_6 = _a.sent();
                         res.status(500).json({
                             success: false,
                             message: 'Error deleting place',
-                            error: error_5.message
+                            error: error_6.message
                         });
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
+                        return [3 /*break*/, 7];
+                    case 7: return [2 /*return*/];
                 }
             });
         }); };
         // GET /api/places/nearby - ค้นหาสถานที่ใกล้เคียง
         this.getNearbyPlaces = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
-            var _a, latitude, longitude, _b, radius, lat, lng, radiusKm, places, error_6;
+            var _a, latitude, longitude, _b, radius, lat, lng, radiusKm, places, error_7;
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
                         _c.trys.push([0, 2, , 3]);
-                        _a = req.query, latitude = _a.latitude, longitude = _a.longitude, _b = _a.radius, radius = _b === void 0 ? 10 : _b;
+                        _a = req.query, latitude = _a.latitude, longitude = _a.longitude, _b = _a.radius, radius = _b === void 0 ? '10' : _b;
                         if (!latitude || !longitude) {
                             res.status(400).json({
                                 success: false,
@@ -406,14 +722,171 @@ var PlaceController = /** @class */ (function () {
                         });
                         return [3 /*break*/, 3];
                     case 2:
-                        error_6 = _c.sent();
+                        error_7 = _c.sent();
                         res.status(500).json({
                             success: false,
                             message: 'Error fetching nearby places',
-                            error: error_6.message
+                            error: error_7.message
                         });
                         return [3 /*break*/, 3];
                     case 3: return [2 /*return*/];
+                }
+            });
+        }); };
+        // PUT /api/places/:id - อัปเดตข้อมูลสถานที่
+        this.updatePlace = function (req, res) { return __awaiter(_this, void 0, Promise, function () {
+            var id, _a, name_place, latitude, longitude, type_name, province_name, district, sub_district, place_image, google_place_id, google_place_data, existingPlace, duplicateName, duplicateCoords, duplicateGoogleId, placeTypeId, placeType, provinceId, province, updatedPlace, error_8;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 13, , 14]);
+                        id = req.params.id;
+                        _a = req.body, name_place = _a.name_place, latitude = _a.latitude, longitude = _a.longitude, type_name = _a.type_name, province_name = _a.province_name, district = _a.district, sub_district = _a.sub_district, place_image = _a.place_image, google_place_id = _a.google_place_id, google_place_data = _a.google_place_data;
+                        return [4 /*yield*/, prisma.place.findUnique({
+                                where: { id_place: id }
+                            })];
+                    case 1:
+                        existingPlace = _b.sent();
+                        if (!existingPlace) {
+                            res.status(404).json({
+                                success: false,
+                                message: 'Place not found'
+                            });
+                            return [2 /*return*/];
+                        }
+                        if (!(name_place && name_place !== existingPlace.name_place)) return [3 /*break*/, 3];
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    name_place: {
+                                        equals: name_place,
+                                        mode: 'insensitive'
+                                    },
+                                    id_place: {
+                                        not: id
+                                    }
+                                }
+                            })];
+                    case 2:
+                        duplicateName = _b.sent();
+                        if (duplicateName) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with name '" + name_place + "' already exists"
+                            });
+                            return [2 /*return*/];
+                        }
+                        _b.label = 3;
+                    case 3:
+                        if (!(latitude && longitude)) return [3 /*break*/, 5];
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    latitude: parseFloat(latitude.toString()),
+                                    longitude: parseFloat(longitude.toString()),
+                                    id_place: {
+                                        not: id
+                                    }
+                                }
+                            })];
+                    case 4:
+                        duplicateCoords = _b.sent();
+                        if (duplicateCoords) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with coordinates (" + latitude + ", " + longitude + ") already exists"
+                            });
+                            return [2 /*return*/];
+                        }
+                        _b.label = 5;
+                    case 5:
+                        if (!(google_place_id && google_place_id !== existingPlace.gg_ref)) return [3 /*break*/, 7];
+                        return [4 /*yield*/, prisma.place.findFirst({
+                                where: {
+                                    gg_ref: google_place_id,
+                                    id_place: {
+                                        not: id
+                                    }
+                                }
+                            })];
+                    case 6:
+                        duplicateGoogleId = _b.sent();
+                        if (duplicateGoogleId) {
+                            res.status(409).json({
+                                success: false,
+                                message: "Place with Google Place ID '" + google_place_id + "' already exists"
+                            });
+                            return [2 /*return*/];
+                        }
+                        _b.label = 7;
+                    case 7:
+                        placeTypeId = existingPlace.place_type_id;
+                        if (!type_name) return [3 /*break*/, 9];
+                        return [4 /*yield*/, prisma.placeType.findFirst({
+                                where: {
+                                    type_name: {
+                                        contains: type_name,
+                                        mode: 'insensitive'
+                                    }
+                                }
+                            })];
+                    case 8:
+                        placeType = _b.sent();
+                        if (!placeType) {
+                            res.status(400).json({
+                                success: false,
+                                message: "Place type '" + type_name + "' not found"
+                            });
+                            return [2 /*return*/];
+                        }
+                        placeTypeId = placeType.id_place_type;
+                        _b.label = 9;
+                    case 9:
+                        provinceId = existingPlace.province_id;
+                        if (!province_name) return [3 /*break*/, 11];
+                        return [4 /*yield*/, prisma.msProvince.findFirst({
+                                where: {
+                                    name: {
+                                        contains: province_name,
+                                        mode: 'insensitive'
+                                    }
+                                }
+                            })];
+                    case 10:
+                        province = _b.sent();
+                        if (!province) {
+                            res.status(400).json({
+                                success: false,
+                                message: "Province '" + province_name + "' not found"
+                            });
+                            return [2 /*return*/];
+                        }
+                        provinceId = province.id_province;
+                        _b.label = 11;
+                    case 11: return [4 /*yield*/, prisma.place.update({
+                            where: { id_place: id },
+                            data: __assign(__assign(__assign(__assign(__assign(__assign(__assign(__assign(__assign({}, (name_place && { name_place: name_place })), (latitude && { latitude: parseFloat(latitude.toString()) })), (longitude && { longitude: parseFloat(longitude.toString()) })), { place_type_id: placeTypeId, province_id: provinceId }), (district !== undefined && { district: district || null })), (sub_district !== undefined && { sub_district: sub_district || null })), (place_image !== undefined && { place_image: place_image || null })), (google_place_id !== undefined && { gg_ref: google_place_id || null })), { updated_at: new Date() }),
+                            include: {
+                                place_type: true,
+                                province: true
+                            }
+                        })];
+                    case 12:
+                        updatedPlace = _b.sent();
+                        res.json({
+                            success: true,
+                            data: updatedPlace,
+                            message: 'Place updated successfully'
+                        });
+                        return [3 /*break*/, 14];
+                    case 13:
+                        error_8 = _b.sent();
+                        console.error('Error updating place:', error_8);
+                        res.status(500).json({
+                            success: false,
+                            message: 'Error updating place',
+                            error: error_8.message
+                        });
+                        return [3 /*break*/, 14];
+                    case 14: return [2 /*return*/];
                 }
             });
         }); };

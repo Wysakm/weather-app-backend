@@ -1,16 +1,30 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+interface PlaceQueryParams {
+  page?: string;
+  limit?: string;
+  province_id?: string;
+  place_type_id?: string;
+  search?: string;
+}
+
+interface NearbyQueryParams {
+  latitude?: string;
+  longitude?: string;
+  radius?: string;
+}
 
 export class PlaceController {
   // GET /api/places - ดึงข้อมูลสถานที่ทั้งหมด
   getAllPlaces = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { page = 1, limit = 10, province_id, place_type_id, search } = req.query;
+      const { page = '1', limit = '10', province_id, place_type_id, search }: PlaceQueryParams = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
-      const where: any = {};
+      const where: Prisma.PlaceWhereInput = {};
       
       if (province_id) where.province_id = province_id as string;
       if (place_type_id) where.place_type_id = place_type_id as string;
@@ -126,8 +140,74 @@ export class PlaceController {
         province_name,
         district,
         sub_district,
-        place_image
+        place_image,
+        google_place_id, // เพิ่ม Google Place ID
+        google_place_data // เพิ่มข้อมูลเพิ่มเติมจาก Google Places
       } = req.body;
+
+      // Validate required fields
+      if (!name_place || !latitude || !longitude || !type_name) {
+        res.status(400).json({
+          success: false,
+          message: 'name_place, latitude, longitude, and type_name are required'
+        });
+        return;
+      }
+
+      // Check for duplicate Google Place ID (หากมีการส่ง google_place_id มา)
+      if (google_place_id) {
+        const existingPlaceByGoogleId = await prisma.place.findFirst({
+          where: {
+            gg_ref: google_place_id
+          }
+        });
+
+        if (existingPlaceByGoogleId) {
+          res.status(409).json({
+            success: false,
+            message: `Place with Google Place ID '${google_place_id}' already exists`,
+            existingPlace: {
+              id: existingPlaceByGoogleId.id_place,
+              name: existingPlaceByGoogleId.name_place
+            }
+          });
+          return;
+        }
+      }
+
+      // Check for duplicate place name
+      const existingPlaceByName = await prisma.place.findFirst({
+        where: {
+          name_place: {
+            equals: name_place,
+            mode: 'insensitive'
+          }
+        }
+      });
+
+      if (existingPlaceByName) {
+        res.status(409).json({
+          success: false,
+          message: `Place with name '${name_place}' already exists`
+        });
+        return;
+      }
+
+      // Check for duplicate coordinates (same latitude and longitude)
+      const existingPlaceByCoords = await prisma.place.findFirst({
+        where: {
+          latitude: parseFloat(latitude.toString()),
+          longitude: parseFloat(longitude.toString())
+        }
+      });
+
+      if (existingPlaceByCoords) {
+        res.status(409).json({
+          success: false,
+          message: `Place with coordinates (${latitude}, ${longitude}) already exists`
+        });
+        return;
+      }
 
       // ค้นหา place_type จาก type_name
       const placeType = await prisma.placeType.findFirst({ 
@@ -147,27 +227,60 @@ export class PlaceController {
         return;
       }
 
-      // ใช้ default province ก่อน (เพื่อให้ระบบทำงานได้)
-      const province = await prisma.msProvince.findFirst();
-
-      if (!province) {
-        res.status(400).json({
-          success: false,
-          message: 'No province found in database'
+      // หาจังหวัดเริ่มต้น
+      let selectedProvinceId: string;
+      
+      if (province_name) {
+        const foundProvince = await prisma.msProvince.findFirst({
+          where: { 
+            name: {
+              contains: province_name,
+              mode: 'insensitive'
+            }
+          }
         });
-        return;
+        
+        if (foundProvince) {
+          selectedProvinceId = foundProvince.id_province;
+        } else {
+          res.status(400).json({
+            success: false,
+            message: `Province '${province_name}' not found`
+          });
+          return;
+        }
+      } else {
+        // ใช้จังหวัดเริ่มต้น (Bangkok)
+        const defaultProvince = await prisma.msProvince.findFirst({
+          where: { name: 'Bangkok' }
+        });
+        
+        if (!defaultProvince) {
+          res.status(400).json({
+            success: false,
+            message: 'No default province found. Please specify province_name'
+          });
+          return;
+        }
+        
+        selectedProvinceId = defaultProvince.id_province;
       }
 
       const place = await prisma.place.create({
         data: {
           name_place,
-          latitude,
-          longitude,
+          latitude: parseFloat(latitude.toString()),
+          longitude: parseFloat(longitude.toString()),
           place_type_id: placeType.id_place_type,
-          province_id: province.id_province,
-          district,
-          sub_district,
-          place_image
+          province_id: selectedProvinceId,
+          district: district || null,
+          sub_district: sub_district || null,
+          place_image: place_image || null,
+          gg_ref: google_place_id || null
+        },
+        include: {
+          place_type: true,
+          province: true
         }
       });
 
@@ -186,70 +299,229 @@ export class PlaceController {
     }
   };
 
-  // PUT /api/places/:id - อัปเดตข้อมูลสถานที่
-  updatePlace = async (req: Request, res: Response): Promise<void> => {
+  // POST /api/places/google - เพิ่มสถานที่จาก Google Places API
+  createPlaceFromGoogle = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { id } = req.params;
-      const updateData = req.body;
+      const {
+        google_place_id,
+        google_place_data,
+        type_name = 'Tourist Attraction' // default place type
+      } = req.body;
 
-      // ตรวจสอบว่าสถานที่มีอยู่จริง
-      const existingPlace = await prisma.place.findUnique({
-        where: { id_place: id }
-      });
-
-      if (!existingPlace) {
-        res.status(404).json({
+      // Validate required fields
+      if (!google_place_id || !google_place_data) {
+        res.status(400).json({
           success: false,
-          message: 'Place not found'
+          message: 'google_place_id and google_place_data are required'
         });
         return;
       }
 
-      // ตรวจสอบ place_type และ province หากมีการอัปเดต
-      if (updateData.place_type_id) {
-        const placeType = await prisma.placeType.findUnique({
-          where: { id_place_type: updateData.place_type_id }
+      // Check if place already exists by Google Place ID
+      const existingPlace = await prisma.place.findFirst({
+        where: {
+          gg_ref: google_place_id
+        }
+      });
+
+      if (existingPlace) {
+        res.status(409).json({
+          success: false,
+          message: `Place with Google Place ID '${google_place_id}' already exists`,
+          existingPlace: {
+            id: existingPlace.id_place,
+            name: existingPlace.name_place,
+            google_place_id: existingPlace.gg_ref
+          }
         });
-        if (!placeType) {
-          res.status(400).json({
-            success: false,
-            message: 'Invalid place type'
-          });
-          return;
+        return;
+      }
+
+      // Extract data from Google Places response
+      const {
+        name,
+        geometry: { location: { lat, lng } },
+        formatted_address,
+        types,
+        photos,
+        vicinity
+      } = google_place_data;
+
+      // Check for duplicate name
+      const existingPlaceByName = await prisma.place.findFirst({
+        where: {
+          name_place: {
+            equals: name,
+            mode: 'insensitive'
+          }
+        }
+      });
+
+      if (existingPlaceByName) {
+        res.status(409).json({
+          success: false,
+          message: `Place with name '${name}' already exists`,
+          existingPlace: {
+            id: existingPlaceByName.id_place,
+            name: existingPlaceByName.name_place
+          }
+        });
+        return;
+      }
+
+      // Check for duplicate coordinates
+      const existingPlaceByCoords = await prisma.place.findFirst({
+        where: {
+          latitude: lat,
+          longitude: lng
+        }
+      });
+
+      if (existingPlaceByCoords) {
+        res.status(409).json({
+          success: false,
+          message: `Place with coordinates (${lat}, ${lng}) already exists`,
+          existingPlace: {
+            id: existingPlaceByCoords.id_place,
+            name: existingPlaceByCoords.name_place
+          }
+        });
+        return;
+      }
+
+      // Find or use default place type
+      const placeType = await prisma.placeType.findFirst({
+        where: {
+          type_name: {
+            contains: type_name,
+            mode: 'insensitive'
+          }
+        }
+      });
+
+      if (!placeType) {
+        res.status(400).json({
+          success: false,
+          message: `Place type '${type_name}' not found`
+        });
+        return;
+      }
+
+      // Determine province (default to Bangkok if can't determine)
+      let selectedProvinceId: string = '';
+      
+      // Try to extract province from formatted_address
+      const addressParts = formatted_address?.split(',') || [];
+      let provinceFound = false;
+
+      for (const part of addressParts) {
+        const trimmedPart = part.trim();
+        const foundProvince = await prisma.msProvince.findFirst({
+          where: {
+            name: {
+              contains: trimmedPart,
+              mode: 'insensitive'
+            }
+          }
+        });
+
+        if (foundProvince) {
+          selectedProvinceId = foundProvince.id_province;
+          provinceFound = true;
+          break;
         }
       }
 
-      if (updateData.province_id) {
-        const province = await prisma.msProvince.findUnique({
-          where: { id_province: updateData.province_id }
+      if (!provinceFound) {
+        // Use Bangkok as default
+        const defaultProvince = await prisma.msProvince.findFirst({
+          where: { name: 'Bangkok' }
         });
-        if (!province) {
+
+        if (!defaultProvince) {
           res.status(400).json({
             success: false,
-            message: 'Invalid province'
+            message: 'No default province found'
           });
           return;
         }
+
+        selectedProvinceId = defaultProvince.id_province;
       }
 
-      const place = await prisma.place.update({
-        where: { id_place: id },
-        data: updateData,
+      // Get photo URL if available
+      let placeImage = null;
+      if (photos && photos.length > 0) {
+        // Store the photo reference for now
+        placeImage = photos[0].photo_reference;
+      }
+
+      const place = await prisma.place.create({
+        data: {
+          name_place: name,
+          latitude: lat,
+          longitude: lng,
+          place_type_id: placeType.id_place_type,
+          province_id: selectedProvinceId,
+          district: vicinity || null,
+          sub_district: null,
+          place_image: placeImage,
+          gg_ref: google_place_id
+        },
         include: {
           place_type: true,
           province: true
         }
       });
 
-      res.json({
+      res.status(201).json({
         success: true,
         data: place,
-        message: 'Place updated successfully'
+        message: 'Place created from Google Places API successfully'
       });
+    } catch (error: any) {
+      console.error('Error creating place from Google:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error creating place from Google Places API',
+        error: error.message
+      });
+    }
+  };
+
+  // GET /api/places/check-google/:google_place_id - ตรวจสอบว่าสถานที่จาก Google มีอยู่แล้วหรือไม่
+  checkGooglePlace = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { google_place_id } = req.params;
+
+      const existingPlace = await prisma.place.findFirst({
+        where: {
+          gg_ref: google_place_id
+        },
+        include: {
+          place_type: true,
+          province: true
+        }
+      });
+
+      if (existingPlace) {
+        res.json({
+          success: true,
+          exists: true,
+          data: existingPlace,
+          message: 'Place already exists in database'
+        });
+      } else {
+        res.json({
+          success: true,
+          exists: false,
+          message: 'Place does not exist in database'
+        });
+      }
     } catch (error: any) {
       res.status(500).json({
         success: false,
-        message: 'Error updating place',
+        message: 'Error checking Google place',
         error: error.message
       });
     }
@@ -259,6 +531,7 @@ export class PlaceController {
   deletePlace = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
+      const { force } = req.query; // เพิ่ม query parameter สำหรับ force delete
 
       // ตรวจสอบว่าสถานที่มีอยู่จริง
       const existingPlace = await prisma.place.findUnique({
@@ -287,22 +560,64 @@ export class PlaceController {
                            existingPlace._count.weather_data > 0 || 
                            existingPlace._count.aqi_data > 0;
 
-      if (hasRelatedData) {
+      // หากมีข้อมูลที่เกี่ยวข้องและไม่มี force parameter
+      if (hasRelatedData && force !== 'true') {
         res.status(400).json({
           success: false,
-          message: 'Cannot delete place with related data (posts, weather data, or AQI data)'
+          message: 'Cannot delete place with related data (posts, weather data, or AQI data). Use ?force=true to force delete.',
+          relatedData: {
+            posts: existingPlace._count.posts,
+            weather_data: existingPlace._count.weather_data,
+            aqi_data: existingPlace._count.aqi_data
+          }
         });
         return;
       }
 
-      await prisma.place.delete({
-        where: { id_place: id }
-      });
+      // หากเป็น force delete ให้ลบข้อมูลที่เกี่ยวข้องก่อน
+      if (force === 'true' && hasRelatedData) {
+        await prisma.$transaction(async (tx) => {
+          // ลบ posts ที่เกี่ยวข้อง
+          await tx.post.deleteMany({
+            where: { id_place: id }
+          });
 
-      res.json({
-        success: true,
-        message: 'Place deleted successfully'
-      });
+          // ลบ weather_data ที่เกี่ยวข้อง
+          await tx.weatherData.deleteMany({
+            where: { id_place: id }
+          });
+
+          // ลบ aqi_data ที่เกี่ยวข้อง
+          await tx.aqiData.deleteMany({
+            where: { id_place: id }
+          });
+
+          // ลบ place
+          await tx.place.delete({
+            where: { id_place: id }
+          });
+        });
+
+        res.json({
+          success: true,
+          message: 'Place and all related data deleted successfully (force delete)',
+          deletedData: {
+            posts: existingPlace._count.posts,
+            weather_data: existingPlace._count.weather_data,
+            aqi_data: existingPlace._count.aqi_data
+          }
+        });
+      } else {
+        // ลบ place ปกติ (ไม่มีข้อมูลที่เกี่ยวข้อง)
+        await prisma.place.delete({
+          where: { id_place: id }
+        });
+
+        res.json({
+          success: true,
+          message: 'Place deleted successfully'
+        });
+      }
     } catch (error: any) {
       res.status(500).json({
         success: false,
@@ -315,7 +630,7 @@ export class PlaceController {
   // GET /api/places/nearby - ค้นหาสถานที่ใกล้เคียง
   getNearbyPlaces = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { latitude, longitude, radius = 10 } = req.query;
+      const { latitude, longitude, radius = '10' }: NearbyQueryParams = req.query;
 
       if (!latitude || !longitude) {
         res.status(400).json({
@@ -325,9 +640,9 @@ export class PlaceController {
         return;
       }
 
-      const lat = parseFloat(latitude as string);
-      const lng = parseFloat(longitude as string);
-      const radiusKm = parseFloat(radius as string);
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      const radiusKm = parseFloat(radius);
 
       // ใช้ raw query สำหรับการคำนวณระยะทาง
       const places = await prisma.$queryRaw`
@@ -350,6 +665,182 @@ export class PlaceController {
       res.status(500).json({
         success: false,
         message: 'Error fetching nearby places',
+        error: error.message
+      });
+    }
+  };
+
+  // PUT /api/places/:id - อัปเดตข้อมูลสถานที่
+  updatePlace = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const {
+        name_place,
+        latitude,
+        longitude,
+        type_name,
+        province_name,
+        district,
+        sub_district,
+        place_image,
+        google_place_id,
+        google_place_data
+      } = req.body;
+
+      // ตรวจสอบว่าสถานที่มีอยู่จริง
+      const existingPlace = await prisma.place.findUnique({
+        where: { id_place: id }
+      });
+
+      if (!existingPlace) {
+        res.status(404).json({
+          success: false,
+          message: 'Place not found'
+        });
+        return;
+      }
+
+      // ตรวจสอบการซ้ำกันของชื่อสถานที่ (ยกเว้นสถานที่ปัจจุบัน)
+      if (name_place && name_place !== existingPlace.name_place) {
+        const duplicateName = await prisma.place.findFirst({
+          where: {
+            name_place: {
+              equals: name_place,
+              mode: 'insensitive'
+            },
+            id_place: {
+              not: id
+            }
+          }
+        });
+
+        if (duplicateName) {
+          res.status(409).json({
+            success: false,
+            message: `Place with name '${name_place}' already exists`
+          });
+          return;
+        }
+      }
+
+      // ตรวจสอบการซ้ำกันของพิกัด (ยกเว้นสถานที่ปัจจุบัน)
+      if (latitude && longitude) {
+        const duplicateCoords = await prisma.place.findFirst({
+          where: {
+            latitude: parseFloat(latitude.toString()),
+            longitude: parseFloat(longitude.toString()),
+            id_place: {
+              not: id
+            }
+          }
+        });
+
+        if (duplicateCoords) {
+          res.status(409).json({
+            success: false,
+            message: `Place with coordinates (${latitude}, ${longitude}) already exists`
+          });
+          return;
+        }
+      }
+
+      // ตรวจสอบการซ้ำกันของ Google Place ID (ยกเว้นสถานที่ปัจจุบัน)
+      if (google_place_id && google_place_id !== existingPlace.gg_ref) {
+        const duplicateGoogleId = await prisma.place.findFirst({
+          where: {
+            gg_ref: google_place_id,
+            id_place: {
+              not: id
+            }
+          }
+        });
+
+        if (duplicateGoogleId) {
+          res.status(409).json({
+            success: false,
+            message: `Place with Google Place ID '${google_place_id}' already exists`
+          });
+          return;
+        }
+      }
+
+      // หา place_type ถ้ามีการส่ง type_name มา
+      let placeTypeId = existingPlace.place_type_id;
+      if (type_name) {
+        const placeType = await prisma.placeType.findFirst({
+          where: {
+            type_name: {
+              contains: type_name,
+              mode: 'insensitive'
+            }
+          }
+        });
+
+        if (!placeType) {
+          res.status(400).json({
+            success: false,
+            message: `Place type '${type_name}' not found`
+          });
+          return;
+        }
+
+        placeTypeId = placeType.id_place_type;
+      }
+
+      // หาจังหวัด ถ้ามีการส่ง province_name มา
+      let provinceId = existingPlace.province_id;
+      if (province_name) {
+        const province = await prisma.msProvince.findFirst({
+          where: {
+            name: {
+              contains: province_name,
+              mode: 'insensitive'
+            }
+          }
+        });
+
+        if (!province) {
+          res.status(400).json({
+            success: false,
+            message: `Province '${province_name}' not found`
+          });
+          return;
+        }
+
+        provinceId = province.id_province;
+      }
+
+      // อัปเดตข้อมูล
+      const updatedPlace = await prisma.place.update({
+        where: { id_place: id },
+        data: {
+          ...(name_place && { name_place }),
+          ...(latitude && { latitude: parseFloat(latitude.toString()) }),
+          ...(longitude && { longitude: parseFloat(longitude.toString()) }),
+          place_type_id: placeTypeId,
+          province_id: provinceId,
+          ...(district !== undefined && { district: district || null }),
+          ...(sub_district !== undefined && { sub_district: sub_district || null }),
+          ...(place_image !== undefined && { place_image: place_image || null }),
+          ...(google_place_id !== undefined && { gg_ref: google_place_id || null }),
+          updated_at: new Date()
+        },
+        include: {
+          place_type: true,
+          province: true
+        }
+      });
+
+      res.json({
+        success: true,
+        data: updatedPlace,
+        message: 'Place updated successfully'
+      });
+    } catch (error: any) {
+      console.error('Error updating place:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error updating place',
         error: error.message
       });
     }
