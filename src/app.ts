@@ -3,6 +3,7 @@ import cors from 'cors';
 import passport from './config/passport.config';
 import authRoutes from './routes/auth.routes';
 import placeTypeRoutes from './routes/placeType.routes';
+import placeRoutes from './routes/place.routes'; // เพิ่ม import นี้
 import { errorHandler } from './middleware/error.middleware';
 import dotenv from 'dotenv';
 
@@ -19,6 +20,7 @@ app.use(passport.initialize());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/place-types', placeTypeRoutes);
+app.use('/api/places', placeRoutes); // เพิ่มบรรทัดนี้
 
 // Health check
 app.get('/health', (req, res) => {
