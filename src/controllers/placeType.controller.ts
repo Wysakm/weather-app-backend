@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export class PlaceTypeController {
   // GET /api/place-types - Get all place types
-  static async getAllPlaceTypes(req: Request, res: Response) {
+  static async getAllPlaceTypes(req: Request, res: Response): Promise<void> {
     try {
       const placeTypes = await prisma.placeType.findMany({
         include: {
@@ -32,7 +32,7 @@ export class PlaceTypeController {
   }
 
   // GET /api/place-types/:id - Get place type by ID
-  static async getPlaceTypeById(req: Request, res: Response, next: NextFunction) {
+  static async getPlaceTypeById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -56,11 +56,11 @@ export class PlaceTypeController {
       });
 
       if (!placeType) {
-
-        next({
+        res.status(404).json({
           success: false,
           error: 'Place type not found'
-        })
+        });
+        return;
       }
 
       res.status(200).json({
@@ -77,15 +77,16 @@ export class PlaceTypeController {
   }
 
   // POST /api/place-types - Create new place type
-  static async createPlaceType(req: Request, res: Response, next: NextFunction) {
+  static async createPlaceType(req: Request, res: Response): Promise<void> {
     try {
       const { type_name } = req.body;
 
       if (!type_name || typeof type_name !== 'string') {
-        next({
+        res.status(400).json({
           success: false,
           error: 'type_name is required and must be a string'
         });
+        return;
       }
 
       // Check if place type already exists
@@ -99,10 +100,11 @@ export class PlaceTypeController {
       });
 
       if (existingPlaceType) {
-      next ({
+        res.status(409).json({
           success: false,
           error: 'Place type with this name already exists'
         });
+        return;
       }
 
       const placeType = await prisma.placeType.create({
@@ -125,16 +127,17 @@ export class PlaceTypeController {
   }
 
   // PUT /api/place-types/:id - Update place type
-  static async updatePlaceType(req: Request, res: Response, next: NextFunction) {
+  static async updatePlaceType(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { type_name } = req.body;
 
       if (!type_name || typeof type_name !== 'string') {
-        next({
+        res.status(400).json({
           success: false,
           error: 'type_name is required and must be a string'
         });
+        return;
       }
 
       // Check if another place type with the same name exists
@@ -151,10 +154,11 @@ export class PlaceTypeController {
       });
 
       if (existingPlaceType) {
-        next({
+        res.status(409).json({
           success: false,
           error: 'Place type with this name already exists'
         });
+        return;
       }
 
       const placeType = await prisma.placeType.update({
@@ -168,10 +172,11 @@ export class PlaceTypeController {
       });
     } catch (error: any) {
       if (error.code === 'P2025') {
-        next ({
+        res.status(404).json({
           success: false,
           error: 'Place type not found'
         });
+        return;
       }
 
       res.status(500).json({
@@ -183,7 +188,7 @@ export class PlaceTypeController {
   }
 
   // DELETE /api/place-types/:id - Delete place type
-  static async deletePlaceType(req: Request, res: Response, next: NextFunction) {
+  static async deletePlaceType(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -193,10 +198,11 @@ export class PlaceTypeController {
       });
 
       if (placeCount > 0) {
-        next({
+        res.status(400).json({
           success: false,
           error: `Cannot delete place type with ${placeCount} associated places`
         });
+        return;
       }
 
       await prisma.placeType.delete({
@@ -209,10 +215,11 @@ export class PlaceTypeController {
       });
     } catch (error: any) {
       if (error.code === 'P2025') {
-        next({
+        res.status(404).json({
           success: false,
           error: 'Place type not found'
         });
+        return;
       }
 
       res.status(500).json({
