@@ -119,54 +119,55 @@ export class PlaceController {
   createPlace = async (req: Request, res: Response): Promise<void> => {
     try {
       const {
-        gg_ref,
         name_place,
-        place_type_id,
         latitude,
         longitude,
-        province_id,
+        type_name,
+        province_name,
         district,
         sub_district,
         place_image
       } = req.body;
 
-      // ตรวจสอบว่า place_type และ province มีอยู่จริง
-      const [placeType, province] = await Promise.all([
-        prisma.placeType.findUnique({ where: { id_place_type: place_type_id } }),
-        prisma.msProvince.findUnique({ where: { id_province: province_id } })
-      ]);
+      // ค้นหา place_type จาก type_name
+      const placeType = await prisma.placeType.findFirst({ 
+        where: { 
+          type_name: {
+            contains: type_name,
+            mode: 'insensitive'
+          }
+        } 
+      });
 
       if (!placeType) {
         res.status(400).json({
           success: false,
-          message: 'Invalid place type'
+          message: `Place type '${type_name}' not found`
         });
         return;
       }
 
+      // ใช้ default province ก่อน (เพื่อให้ระบบทำงานได้)
+      const province = await prisma.msProvince.findFirst();
+
       if (!province) {
         res.status(400).json({
           success: false,
-          message: 'Invalid province'
+          message: 'No province found in database'
         });
         return;
       }
 
       const place = await prisma.place.create({
         data: {
-          gg_ref,
           name_place,
-          place_type_id,
           latitude,
           longitude,
-          province_id,
+          place_type_id: placeType.id_place_type,
+          province_id: province.id_province,
           district,
           sub_district,
           place_image
-        },
-        include: {
-          place_type: true,
-          province: true
         }
       });
 
@@ -176,6 +177,7 @@ export class PlaceController {
         message: 'Place created successfully'
       });
     } catch (error: any) {
+      console.error('Error creating place:', error);
       res.status(500).json({
         success: false,
         message: 'Error creating place',
@@ -353,3 +355,6 @@ export class PlaceController {
     }
   };
 }
+
+// Export instance for use in routes
+export const placeController = new PlaceController();

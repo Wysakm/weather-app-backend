@@ -25,28 +25,26 @@ const placeUpdateSchema = Joi.object({
   place_image: Joi.string().uri().optional().allow(null)
 });
 
-export const validatePlace = (req: Request, res: Response, next: NextFunction): void => {
+export const validatePlace = (req: Request, res: Response, next: NextFunction) => {
   const { error } = placeSchema.validate(req.body);
   if (error) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: 'Validation error',
       errors: error.details.map(detail => detail.message)
     });
-    return;
   }
   next();
 };
 
-export const validatePlaceUpdate = (req: Request, res: Response, next: NextFunction): void => {
+export const validatePlaceUpdate = (req: Request, res: Response, next: NextFunction) => {
   const { error } = placeUpdateSchema.validate(req.body);
   if (error) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: 'Validation error',
       errors: error.details.map(detail => detail.message)
     });
-    return;
   }
   next();
 };
