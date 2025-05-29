@@ -4,6 +4,8 @@ import passport from './config/passport.config';
 import authRoutes from './routes/auth.routes';
 import placeTypeRoutes from './routes/placeType.routes';
 import placeRoutes from './routes/place.routes';
+import postRoutes from './routes/post.routes';
+import provinceRoutes from './routes/province.routes';
 import weatherRoutes from './routes/weatherRoutes';
 import aqiRoutes from './routes/aqiRoutes';
 import { errorHandler } from './middleware/error.middleware';
@@ -23,6 +25,8 @@ app.use(passport.initialize());
 app.use('/api/auth', authRoutes);
 app.use('/api/place-types', placeTypeRoutes);
 app.use('/api/places', placeRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/provinces', provinceRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/aqi', aqiRoutes);
 

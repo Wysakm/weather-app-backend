@@ -1,0 +1,170 @@
+### ===== POST API TESTING =### 5. GET Posts by Place Type with Filters
+GET {{baseUrl}}/api/posts/place-type/{{placeTypeId}}?page=1&limit=10&status=approved
+Content-Type: application/json
+
+### 6. GET Posts by Province with Filters
+GET {{baseUrl}}/api/posts/province/{{provinceId}}?page=1&limit=10&status=approved&place_type_id={{placeTypeId}}
+Content-Type: application/json
+
+### 7. GET Posts by User
+### Variables
+@baseUrl = http://localhost:3030
+@token = your_jwt_token_here
+@placeTypeId = your_place_type_id_here
+@provinceId = your_province_id_here
+@placeId = your_place_id_here
+@userId = your_user_id_here
+@postId = your_post_id_here
+
+### ===== PUBLIC ROUTES =====
+
+### 1. GET All Posts
+GET {{baseUrl}}/api/posts
+Content-Type: application/json
+
+### 2. GET All Posts with Pagination and Filters
+GET {{baseUrl}}/api/posts?page=1&limit=5&status=approved&search=weather
+Content-Type: application/json
+
+### 3. GET Posts by Place Type
+GET {{baseUrl}}/api/posts/place-type/{{placeTypeId}}
+Content-Type: application/json
+
+### 4. GET Posts by Province
+GET {{baseUrl}}/api/posts/province/{{provinceId}}
+Content-Type: application/json
+
+### 5. GET Posts by Place Type with Filters
+GET {{baseUrl}}/api/posts/place-type/{{placeTypeId}}?page=1&limit=10&status=approved
+Content-Type: application/json
+
+### 5. GET Posts by User
+GET {{baseUrl}}/api/posts/user/{{userId}}
+Content-Type: application/json
+
+### 6. GET Posts by Place
+GET {{baseUrl}}/api/posts/place/{{placeId}}
+Content-Type: application/json
+
+### 7. GET Post by ID
+GET {{baseUrl}}/api/posts/{{postId}}
+Content-Type: application/json
+
+### ===== PROTECTED ROUTES (Require Authentication) =====
+
+### 8. CREATE New Post
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Beautiful Weather Today!",
+  "body": "The weather at this location is absolutely perfect today. Clear blue skies and gentle breeze make it an ideal day for outdoor activities.",
+  "id_place": "{{placeId}}",
+  "image": "https://example.com/weather-image.jpg"
+}
+
+### 9. UPDATE Post
+PUT {{baseUrl}}/api/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Updated: Amazing Weather Conditions",
+  "body": "Updated description: The weather conditions have been consistently amazing at this location. Perfect for photography and sightseeing!",
+  "image": "https://example.com/updated-weather-image.jpg"
+}
+
+### 10. DELETE Post
+DELETE {{baseUrl}}/api/posts/{{postId}}
+Authorization: Bearer {{token}}
+
+### ===== ADMIN/MODERATOR ROUTES =====
+
+### 11. GET Pending Posts (Admin/Moderator Only)
+GET {{baseUrl}}/api/posts/admin/pending
+Authorization: Bearer {{token}}
+
+### 12. GET Pending Posts with Pagination
+GET {{baseUrl}}/api/posts/admin/pending?page=1&limit=5
+Authorization: Bearer {{token}}
+
+### 13. APPROVE Post (Admin/Moderator Only)
+PUT {{baseUrl}}/api/posts/{{postId}}/approve
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "approved"
+}
+
+### 14. REJECT Post (Admin/Moderator Only)
+PUT {{baseUrl}}/api/posts/{{postId}}/approve
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "rejected"
+}
+
+### ===== ADVANCED FILTERING EXAMPLES =====
+
+### 15. Filter by Province
+GET {{baseUrl}}/api/posts?province_id=your_province_id_here
+Content-Type: application/json
+
+### 16. Filter by Place Type
+GET {{baseUrl}}/api/posts?place_type_id={{placeTypeId}}
+Content-Type: application/json
+
+### 17. Search Posts
+GET {{baseUrl}}/api/posts?search=beautiful&status=approved
+Content-Type: application/json
+
+### 18. Complex Filter
+GET {{baseUrl}}/api/posts?page=1&limit=10&search=weather&status=approved&place_type_id={{placeTypeId}}
+Content-Type: application/json
+
+### ===== ERROR TESTING =====
+
+### 19. Test 404 - Post Not Found
+GET {{baseUrl}}/api/posts/non-existent-id
+Content-Type: application/json
+
+### 20. Test 404 - Place Type Not Found
+GET {{baseUrl}}/api/posts/place-type/non-existent-place-type-id
+Content-Type: application/json
+
+### 21. Test Validation Error - Create Post without required fields
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Missing body and id_place"
+}
+
+### 22. Test Unauthorized - Create Post without token
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+
+{
+  "title": "Test Post",
+  "body": "This should fail without authorization",
+  "id_place": "{{placeId}}"
+}
+
+### ===== AUTHENTICATION SETUP =====
+
+### First, Login to get JWT Token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "your_username",
+  "password": "your_password"
+}
+
+### Check Authentication
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}

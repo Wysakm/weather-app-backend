@@ -1,0 +1,215 @@
+### ===== WEATHER APP BACKEND - COMPLETE TESTING WORKFLOW =====
+### This file provides a complete testing workflow for authentication and posts
+### Follow the numbered steps in order to test the full system
+
+### Variables
+@baseUrl = http://localhost:3030
+@testEmail = testuser@example.com
+@testPassword = TestPass123!
+@testUsername = testuser123
+@token = 
+@userId = 
+@placeId = 
+@placeTypeId = 
+@provinceId = 
+@postId = 
+
+### ===== STEP 1: AUTHENTICATION TESTING =====
+
+### 1.1 Register a Test User
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}",
+  "username": "{{testUsername}}",
+  "role": "USER"
+}
+
+### 1.2 Login with Test User (Save token from response)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{testUsername}}",
+  "password": "{{testPassword}}"
+}
+
+### 1.3 Verify JWT Token
+POST {{baseUrl}}/api/auth/verify
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 1.4 Get Current User Profile
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### ===== STEP 2: GET REFERENCE DATA =====
+
+### 2.1 Get All Provinces (to get provinceId)
+GET {{baseUrl}}/api/provinces
+Content-Type: application/json
+
+### 2.2 Get Place Types (to get placeTypeId)
+GET {{baseUrl}}/api/place-types
+Content-Type: application/json
+
+### 2.3 Get Places (to get placeId)
+GET {{baseUrl}}/api/places?page=1&limit=5
+Content-Type: application/json
+
+### ===== STEP 3: POST MANAGEMENT TESTING =====
+
+### 3.1 Create a New Post (PROTECTED ROUTE)
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "Testing weather conditions in Bangkok today. Very hot and humid!",
+  "place_id": "{{placeId}}",
+  "place_type_id": "{{placeTypeId}}",
+  "image_url": "https://example.com/weather-photo.jpg"
+}
+
+### 3.2 Get All Posts (PUBLIC ROUTE)
+GET {{baseUrl}}/api/posts
+Content-Type: application/json
+
+### 3.3 Get Posts with Pagination and Filters
+GET {{baseUrl}}/api/posts?page=1&limit=10&status=approved&search=weather
+Content-Type: application/json
+
+### 3.4 Get Posts by Province (Province-based filtering)
+GET {{baseUrl}}/api/posts/province/{{provinceId}}
+Content-Type: application/json
+
+### 3.5 Get Posts by Province with Place Type Filter
+GET {{baseUrl}}/api/posts/province/{{provinceId}}?place_type_id={{placeTypeId}}&page=1&limit=10
+Content-Type: application/json
+
+### 3.6 Get Posts by Place Type
+GET {{baseUrl}}/api/posts/place-type/{{placeTypeId}}
+Content-Type: application/json
+
+### 3.7 Get Posts by User
+GET {{baseUrl}}/api/posts/user/{{userId}}
+Content-Type: application/json
+
+### 3.8 Get Posts by Place
+GET {{baseUrl}}/api/posts/place/{{placeId}}
+Content-Type: application/json
+
+### 3.9 Get Single Post by ID
+GET {{baseUrl}}/api/posts/{{postId}}
+Content-Type: application/json
+
+### 3.10 Update Post (PROTECTED ROUTE - only post owner or admin)
+PUT {{baseUrl}}/api/posts/{{postId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "Updated: Weather conditions in Bangkok - now with rain!",
+  "image_url": "https://example.com/updated-weather-photo.jpg"
+}
+
+### ===== STEP 4: ADMIN/MODERATOR TESTING =====
+
+### 4.1 Register Admin User
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "AdminPass123!",
+  "username": "admin123",
+  "role": "ADMIN"
+}
+
+### 4.2 Login as Admin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin123",
+  "password": "AdminPass123!"
+}
+
+### 4.3 Get Pending Posts (ADMIN ONLY)
+GET {{baseUrl}}/api/posts/admin/pending
+Authorization: Bearer {{token}}
+
+### 4.4 Approve Post (ADMIN ONLY)
+PATCH {{baseUrl}}/api/posts/{{postId}}/approve
+Authorization: Bearer {{token}}
+
+### ===== STEP 5: ADVANCED FILTERING TESTS =====
+
+### 5.1 Search Posts by Keyword
+GET {{baseUrl}}/api/posts?search=weather&page=1&limit=10
+Content-Type: application/json
+
+### 5.2 Filter by Status
+GET {{baseUrl}}/api/posts?status=approved&page=1&limit=10
+Content-Type: application/json
+
+### 5.3 Filter by Province and Place Type
+GET {{baseUrl}}/api/posts?province_id={{provinceId}}&place_type_id={{placeTypeId}}&page=1&limit=10
+Content-Type: application/json
+
+### 5.4 Complex Filter Query
+GET {{baseUrl}}/api/posts?province_id={{provinceId}}&place_type_id={{placeTypeId}}&status=approved&search=weather&page=1&limit=5
+Content-Type: application/json
+
+### ===== STEP 6: ERROR TESTING =====
+
+### 6.1 Test Unauthorized Access (should fail)
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+
+{
+  "content": "This should fail without token",
+  "place_id": "{{placeId}}"
+}
+
+### 6.2 Test Invalid Token (should fail)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer invalid_token_here
+
+### 6.3 Test Missing Required Fields (should fail)
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "Missing place_id - should fail"
+}
+
+### 6.4 Test Invalid Province ID (should fail gracefully)
+GET {{baseUrl}}/api/posts/province/invalid-uuid
+Content-Type: application/json
+
+### ===== STEP 7: CLEANUP (Optional) =====
+
+### 7.1 Delete Test Post (PROTECTED ROUTE)
+DELETE {{baseUrl}}/api/posts/{{postId}}
+Authorization: Bearer {{token}}
+
+### ===== STEP 8: HEALTH CHECK =====
+
+### 8.1 Server Health Check
+GET {{baseUrl}}/health
+Content-Type: application/json
+
+### ===== INSTRUCTIONS =====
+### 1. Start your server: npm run dev
+### 2. Run tests 1.1 and 1.2 first to get authentication token
+### 3. Copy the token from login response to @token variable
+### 4. Run tests 2.1-2.3 to get reference IDs (province, place type, place)
+### 5. Copy the IDs to their respective variables
+### 6. Run the post creation and management tests (3.1-3.10)
+### 7. Test admin functionality if needed (4.1-4.4)
+### 8. Run advanced filtering tests (5.1-5.4)
+### 9. Run error tests to verify proper error handling (6.1-6.4)
