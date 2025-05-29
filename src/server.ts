@@ -13,7 +13,7 @@ app.listen(PORT, () => {
   console.log(`📈 Statistics: http://localhost:${PORT}/api/weather/statistics`);
   
   // เริ่ม optimized weather scheduler (ใช้ตัวเดียวแทนของเดิม 3 ตัว)
-  startWeatherScheduler();
+  // startWeatherScheduler();
 
   console.log('✅ Server is running with optimized automatic weather fetching');
 });
