@@ -497,6 +497,7 @@ export class PlaceController {
   checkGooglePlace = async (req: Request, res: Response): Promise<void> => {
     try {
       const { google_place_id } = req.params;
+      console.log(' google_place_id:', google_place_id)
 
       const existingPlace = await prisma.place.findFirst({
         where: {
@@ -507,6 +508,7 @@ export class PlaceController {
           province: true
         }
       });
+      console.log(' existingPlace:', existingPlace)
 
       if (existingPlace) {
         res.json({
