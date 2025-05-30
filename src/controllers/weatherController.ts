@@ -10,12 +10,6 @@ export class WeatherController {
     try {
       const weatherData = await prisma.weatherData.findMany({
         include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          },
           province: true
         },
         orderBy: {
@@ -36,34 +30,14 @@ export class WeatherController {
     }
   };
 
-  // GET /api/weather/place/:placeId - ดึงข้อมูลสภาพอากาศของสถานที่
+  // GET /api/weather/place/:placeId - ดึงข้อมูลสภาพอากาศของสถานที่ (ไม่มีข้อมูลแล้ว)
   getWeatherByPlace = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { placeId } = req.params;
-      const { limit = 10 } = req.query;
-
-      const weatherData = await prisma.weatherData.findMany({
-        where: {
-          id_place: placeId
-        },
-        include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          },
-          province: true
-        },
-        orderBy: {
-          created_at: 'desc'
-        },
-        take: parseInt(limit as string)
-      });
-
-      res.json({
-        success: true,
-        data: weatherData
+      // WeatherData ไม่มี id_place แล้ว ให้ส่งข้อความแจ้งเตือน
+      res.status(404).json({
+        success: false,
+        message: 'Weather data is no longer stored by specific places. Please use province-level data instead.',
+        data: []
       });
     } catch (error: any) {
       res.status(500).json({
@@ -81,8 +55,7 @@ export class WeatherController {
 
       const weatherData = await prisma.weatherData.findMany({
         where: {
-          id_province: provinceId,
-          id_place: null // เฉพาะข้อมูล province
+          id_province: provinceId
         },
         include: {
           province: true
@@ -111,7 +84,7 @@ export class WeatherController {
       const latestWeatherData = await prisma.weatherData.findMany({
         distinct: ['id_province'],
         where: {
-          id_place: null // เฉพาะข้อมูล province
+          id_province: { not: null }
         },
         include: {
           province: true

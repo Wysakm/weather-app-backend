@@ -22,10 +22,10 @@ model User {
   is_verified  Boolean  @default(false)
 
   // Relations
-  role           Role        @relation(fields: [role_id], references: [id_role])
-  posts          Post[]      @relation("UserPosts")
-  approved_posts Post[]      @relation("ApprovedPosts")
-  user_oauth     UserOauth[]
+  role            Role            @relation(fields: [role_id], references: [id_role])
+  posts           Post[]          @relation("UserPosts")
+  approved_posts  Post[]          @relation("ApprovedPosts")
+  user_oauth      UserOauth[]
   password_resets PasswordReset[]
 
   @@map("user")
@@ -70,35 +70,32 @@ model Post {
 }
 
 model WeatherData {
-  id_weather                    String      @id @default(cuid())
-  id_place                      String?     // เปลี่ยนเป็น optional
+  id_weather                    String    @id @default(cuid())
   id_province                   String?
   weather_code                  Int?
   temperature_2m                Decimal?
   rain                          Decimal?
   precipitation                 Decimal?
   apparent_temperature          Decimal?
-  sunrise                       String?
-  sunset                        String?
+  sunrise                       DateTime?
+  sunset                        DateTime?
   uv_index_max                  Decimal?
   rain_sum                      Decimal?
   precipitation_probability_max Decimal?
   temperature_2m_min            Decimal?
   temperature_2m_max            Decimal?
   wind_speed_10m_max            Decimal?
-  recorded_at                   DateTime    @default(now())
-  created_at                    DateTime    @default(now())
+  recorded_at                   DateTime  @default(now())
+  created_at                    DateTime  @default(now())
 
   // Relations
-  place     Place?      @relation(fields: [id_place], references: [id_place])
-  province  MsProvince? @relation(fields: [id_province], references: [id_province])
+  province MsProvince? @relation(fields: [id_province], references: [id_province])
 
   @@map("weather_data")
 }
 
 model AqiData {
-  id_aqi      String      @id @default(cuid())
-  id_place    String?     // เปลี่ยนเป็น optional
+  id_aqi      String   @id @default(cuid())
   id_province String?
   aqi         Int?
   pm25        Decimal?
@@ -107,12 +104,11 @@ model AqiData {
   so2         Decimal?
   o3          Decimal?
   co          Decimal?
-  recorded_at DateTime    @default(now())
-  created_at  DateTime    @default(now())
+  recorded_at DateTime @default(now())
+  created_at  DateTime @default(now())
 
   // Relations
-  place     Place?      @relation(fields: [id_place], references: [id_place])
-  province  MsProvince? @relation(fields: [id_province], references: [id_province])
+  province MsProvince? @relation(fields: [id_province], references: [id_province])
 
   @@map("aqi_data")
 }
@@ -132,11 +128,9 @@ model Place {
   updated_at    DateTime @updatedAt
 
   // Relations
-  place_type PlaceType     @relation(fields: [place_type_id], references: [id_place_type])
-  province   MsProvince    @relation(fields: [province_id], references: [id_province])
-  posts      Post[]
-  weather_data WeatherData[]
-  aqi_data   AqiData[]
+  place_type   PlaceType     @relation(fields: [place_type_id], references: [id_place_type])
+  province     MsProvince    @relation(fields: [province_id], references: [id_province])
+  posts        Post[]
 
   @@map("place")
 }
@@ -153,7 +147,7 @@ model PlaceType {
 
 model MsProvince {
   id_province String  @id @default(uuid())
-  name        String  // เปลี่ยนจาก province_name เป็น name
+  name        String // เปลี่ยนจาก province_name เป็น name
   latitude    Decimal
   longitude   Decimal
 
@@ -180,15 +174,15 @@ model UserOauth {
 }
 
 model PasswordReset {
-  id           String   @id @default(uuid())
-  user_id      String
-  token        String   @unique
-  expires_at   DateTime
-  used         Boolean  @default(false)
-  created_at   DateTime @default(now())
+  id         String   @id @default(uuid())
+  user_id    String
+  token      String   @unique
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
 
   // Relations
-  user         User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
 
   @@map("password_reset")
 }

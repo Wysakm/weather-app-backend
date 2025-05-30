@@ -9,12 +9,7 @@ export class AqiController {
     try {
       const aqiData = await prisma.aqiData.findMany({
         include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          }
+          province: true
         },
         orderBy: {
           created_at: 'desc'
@@ -39,28 +34,47 @@ export class AqiController {
     try {
       const { placeId } = req.params;
       const { limit = 10 } = req.query;
-
-      const aqiData = await prisma.aqiData.findMany({
+      const place = await prisma.place.findUnique({
         where: {
           id_place: placeId
         },
-        include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          }
-        },
-        orderBy: {
-          created_at: 'desc'
-        },
-        take: parseInt(limit as string)
+        select: {
+          province_id: true, 
+        }
       });
+      
+      const provinceWithAqi = await prisma.msProvince.findUnique({
+        where: {
+          id_province: place?.province_id
+        },
+        select: {
+          id_province: true,
+          name: true,
+          aqi_data: {
+            orderBy: {
+              created_at: 'desc'
+            },
+            take: parseInt(limit as string) 
+          },
+        }
+      });
+      // province_id
+      // const aqiData = await prisma.aqiData.findMany({
+      //   where: {
+      //     id_province: placeId
+      //   },
+      //   include: {
+      //     province: true
+      //   },
+      //   orderBy: {
+      //     created_at: 'desc'
+      //   },
+      //   take: parseInt(limit as string)
+      // });
 
       res.json({
         success: true,
-        data: aqiData
+        data: provinceWithAqi?.aqi_data || [],
       });
     } catch (error: any) {
       res.status(500).json({
@@ -75,14 +89,8 @@ export class AqiController {
   getLatestAqiData = async (req: Request, res: Response): Promise<void> => {
     try {
       const latestAqiData = await prisma.aqiData.findMany({
-        distinct: ['id_place'],
         include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          }
+          province: true,
         },
         orderBy: {
           created_at: 'desc'
@@ -144,12 +152,7 @@ export class AqiController {
           }
         },
         include: {
-          place: {
-            include: {
-              place_type: true,
-              province: true
-            }
-          }
+          province: true
         },
         orderBy: {
           created_at: 'desc'

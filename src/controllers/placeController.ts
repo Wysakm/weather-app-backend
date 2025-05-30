@@ -43,9 +43,7 @@ export class PlaceController {
             province: true,
             _count: {
               select: {
-                posts: true,
-                weather_data: true,
-                aqi_data: true
+                posts: true
               }
             }
           },
@@ -96,14 +94,6 @@ export class PlaceController {
               }
             },
             orderBy: { created_at: 'desc' }
-          },
-          weather_data: {
-            orderBy: { recorded_at: 'desc' },
-            take: 1
-          },
-          aqi_data: {
-            orderBy: { recorded_at: 'desc' },
-            take: 1
           }
         }
       });
@@ -553,9 +543,7 @@ export class PlaceController {
         include: {
           _count: {
             select: {
-              posts: true,
-              weather_data: true,
-              aqi_data: true
+              posts: true
             }
           }
         }
@@ -570,19 +558,15 @@ export class PlaceController {
       }
 
       // ตรวจสอบว่ามีข้อมูลที่เกี่ยวข้องหรือไม่
-      const hasRelatedData = existingPlace._count.posts > 0 || 
-                           existingPlace._count.weather_data > 0 || 
-                           existingPlace._count.aqi_data > 0;
+      const hasRelatedData = existingPlace._count.posts > 0;
 
       // หากมีข้อมูลที่เกี่ยวข้องและไม่มี force parameter
       if (hasRelatedData && force !== 'true') {
         res.status(400).json({
           success: false,
-          message: 'Cannot delete place with related data (posts, weather data, or AQI data). Use ?force=true to force delete.',
+          message: 'Cannot delete place with related data (posts). Use ?force=true to force delete.',
           relatedData: {
-            posts: existingPlace._count.posts,
-            weather_data: existingPlace._count.weather_data,
-            aqi_data: existingPlace._count.aqi_data
+            posts: existingPlace._count.posts
           }
         });
         return;
@@ -596,16 +580,6 @@ export class PlaceController {
             where: { id_place: id }
           });
 
-          // ลบ weather_data ที่เกี่ยวข้อง
-          await tx.weatherData.deleteMany({
-            where: { id_place: id }
-          });
-
-          // ลบ aqi_data ที่เกี่ยวข้อง
-          await tx.aqiData.deleteMany({
-            where: { id_place: id }
-          });
-
           // ลบ place
           await tx.place.delete({
             where: { id_place: id }
@@ -616,9 +590,7 @@ export class PlaceController {
           success: true,
           message: 'Place and all related data deleted successfully (force delete)',
           deletedData: {
-            posts: existingPlace._count.posts,
-            weather_data: existingPlace._count.weather_data,
-            aqi_data: existingPlace._count.aqi_data
+            posts: existingPlace._count.posts
           }
         });
       } else {

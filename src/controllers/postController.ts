@@ -750,18 +750,6 @@ export const getPostsByProvince = async (req: Request, res: Response) => {
           include: {
             place_type: true,
             province: true,
-            weather_data: {
-              orderBy: {
-                recorded_at: 'desc'
-              },
-              take: 1 // เอาข้อมูลสภาพอากาศล่าสุด
-            },
-            aqi_data: {
-              orderBy: {
-                recorded_at: 'desc'
-              },
-              take: 1 // เอาข้อมูล AQI ล่าสุด
-            }
           }
         }
       },

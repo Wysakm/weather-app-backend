@@ -1,4 +1,5 @@
 import { PrismaClient, RoleType } from '@prisma/client';
+import { seedProvinces } from './seed-provinces';
 
 const prisma = new PrismaClient();
 
@@ -35,6 +36,8 @@ async function main() {
 
   console.log('Created roles:', createdRoles);
   console.log('Seeding completed successfully');
+
+  seedProvinces()
 }
 
 main()

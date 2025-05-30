@@ -92,7 +92,7 @@ export class WeatherService {
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        
+
         if (attempt === maxRetries) {
           console.error(`❌ ${operationName} failed after ${maxRetries + 1} attempts:`, lastError.message);
           throw lastError;
@@ -152,12 +152,12 @@ export class WeatherService {
       const [deletedWeather, deletedAqi] = await Promise.all([
         prisma.weatherData.deleteMany({
           where: {
-            id_place: null // เฉพาะข้อมูล province
+            id_province: { not: null } // ข้อมูลระดับจังหวัด
           }
         }),
         prisma.aqiData.deleteMany({
           where: {
-            id_place: null // เฉพาะข้อมูล province
+            id_province: { not: null } // ข้อมูลระดับจังหวัด
           }
         })
       ]);
@@ -198,8 +198,8 @@ export class WeatherService {
 
       // ดึงข้อมูลจังหวัดทั้งหมดที่มี coordinates
       const allProvinces = await prisma.msProvince.findMany();
-      const provinces = allProvinces.filter(province => 
-        province.latitude !== null && 
+      const provinces = allProvinces.filter(province =>
+        province.latitude !== null &&
         province.longitude !== null
       );
 
@@ -216,20 +216,20 @@ export class WeatherService {
         console.log(`📦 Processing batch ${i + 1}/${batches.length} (${batch.length} provinces)`);
 
         // ประมวลผลจังหวัดใน batch นี้แบบ parallel
-        const batchPromises = batch.map(province => 
+        const batchPromises = batch.map(province =>
           this.processProvinceWithErrorHandling(province)
         );
 
         const batchResults = await Promise.allSettled(batchPromises);
-        
+
         // อัพเดทสถิติ
         batchResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.success) {
             stats.successful++;
           } else {
             stats.failed++;
-            const error = result.status === 'rejected' 
-              ? result.reason.message 
+            const error = result.status === 'rejected'
+              ? result.reason.message
               : result.value.error;
             stats.errors.push(`${batch[index].name}: ${error}`);
           }
@@ -242,7 +242,7 @@ export class WeatherService {
       }
 
       stats.duration = Date.now() - startTime;
-      
+
       console.log(`🎉 Batch processing completed:`);
       console.log(`   ✅ Successful: ${stats.successful}/${stats.total}`);
       console.log(`   ❌ Failed: ${stats.failed}/${stats.total}`);
@@ -325,7 +325,7 @@ export class WeatherService {
 
     // บันทึกข้อมูลใน database transaction
     await this.saveProvinceDataInTransaction(province, weatherData, aqiData);
-    
+
     console.log(`✅ Completed processing ${province.name}`);
   }
 
@@ -336,8 +336,8 @@ export class WeatherService {
    * @param aqiData ข้อมูลคุณภาพอากาศ
    */
   private async saveProvinceDataInTransaction(
-    province: any, 
-    weatherData: WeatherResponse | null, 
+    province: any,
+    weatherData: WeatherResponse | null,
     aqiData: AqiResponse | null
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
@@ -351,8 +351,8 @@ export class WeatherService {
             rain: weatherData.current.rain,
             precipitation: weatherData.current.precipitation,
             apparent_temperature: weatherData.current.apparent_temperature,
-            sunrise: weatherData.daily.sunrise[0],
-            sunset: weatherData.daily.sunset[0],
+            sunrise: new Date(weatherData.daily.sunrise[0]), // แปลงเป็น Date
+            sunset: new Date(weatherData.daily.sunset[0]),   // แปลงเป็น Date
             uv_index_max: weatherData.daily.uv_index_max[0],
             rain_sum: weatherData.daily.rain_sum[0],
             precipitation_probability_max: weatherData.daily.precipitation_probability_max[0],
@@ -369,7 +369,8 @@ export class WeatherService {
           data: {
             id_province: province.id_province,
             aqi: aqiData.data.aqi,
-            pm25: aqiData.data.iaqi.pm25?.v || null,
+            // ใช้ค่า PM2.5 จริงหากมี หรือแปลงจาก AQI
+            pm25: this.convertAqiToPm25(aqiData.data.iaqi.pm25?.v || aqiData.data.aqi),
             pm10: aqiData.data.iaqi.pm10?.v || null,
             no2: aqiData.data.iaqi.no2?.v || null,
             so2: aqiData.data.iaqi.so2?.v || null,
@@ -430,8 +431,8 @@ export class WeatherService {
             rain: weatherData.current.rain,
             precipitation: weatherData.current.precipitation,
             apparent_temperature: weatherData.current.apparent_temperature,
-            sunrise: weatherData.daily.sunrise[0],
-            sunset: weatherData.daily.sunset[0],
+            sunrise: new Date(weatherData.daily.sunrise[0]), // แปลงเป็น Date
+            sunset: new Date(weatherData.daily.sunset[0]),   // แปลงเป็น Date
             uv_index_max: weatherData.daily.uv_index_max[0],
             rain_sum: weatherData.daily.rain_sum[0],
             precipitation_probability_max: weatherData.daily.precipitation_probability_max[0],
@@ -447,7 +448,7 @@ export class WeatherService {
           data: {
             id_province: province.id_province,
             aqi: aqiData.data.aqi,
-            pm25: aqiData.data.iaqi.pm25?.v || null,
+            pm25: this.convertAqiToPm25(aqiData.data.iaqi.pm25?.v || aqiData.data.aqi),
             pm10: aqiData.data.iaqi.pm10?.v || null,
             no2: aqiData.data.iaqi.no2?.v || null,
             so2: aqiData.data.iaqi.so2?.v || null,
@@ -480,7 +481,7 @@ export class WeatherService {
       const httpClient = this.createHttpClient();
       // ใช้ timezone=auto เพื่อให้ API เลือก timezone ตามพิกัดที่ส่งไป
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,temperature_2m,rain,precipitation,apparent_temperature&daily=sunrise,sunset,uv_index_max,rain_sum,precipitation_probability_max,temperature_2m_min,temperature_2m_max,wind_speed_10m_max&timezone=auto`;
-      
+
       const response = await httpClient.get(url);
       return response.data as WeatherResponse;
     } catch (error) {
@@ -498,23 +499,23 @@ export class WeatherService {
   private async fetchAqiData(lat: number, lon: number): Promise<AqiResponse | null> {
     try {
       const aqiToken = process.env.AQICN_API_TOKEN;
-      
+
       if (!aqiToken) {
         console.warn('⚠️  AQICN API token is not configured - AQI data will be skipped');
         return null;
       }
-      
+
       const httpClient = this.createHttpClient();
       const response = await httpClient.get(
         `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${aqiToken}`
       );
-      
+
       // ตรวจสอบ response status จาก API
       const responseData = response.data as any;
       if (responseData.status !== 'ok') {
         throw new Error(`AQI API returned status: ${responseData.status}`);
       }
-      
+
       return response.data as AqiResponse;
     } catch (error) {
       console.error(`Error fetching AQI data for coordinates (${lat}, ${lon}):`, (error as Error).message);
@@ -577,15 +578,15 @@ export class WeatherService {
   private async runAutoFetchCycle(): Promise<void> {
     const startTime = Date.now();
     console.log('⏰ Auto-fetching weather data started...');
-    
+
     try {
       const stats = await this.fetchAndStoreWeatherData(true);
       const duration = (Date.now() - startTime) / 1000;
-      
+
       console.log('✅ Auto-fetch completed successfully');
       console.log(`   📊 Statistics: ${stats.successful}/${stats.total} provinces processed`);
       console.log(`   ⏱️  Total duration: ${duration.toFixed(2)}s`);
-      
+
       // Log warning if success rate is low
       const successRate = (stats.successful / stats.total) * 100;
       if (successRate < 80) {
@@ -595,12 +596,12 @@ export class WeatherService {
       // กำหนด interval ถัดไปตามผลลัพธ์
       const nextInterval = this.calculateNextInterval(stats);
       await this.scheduleNextAutoFetch(nextInterval);
-      
+
     } catch (error) {
       const duration = (Date.now() - startTime) / 1000;
       console.error('❌ Auto-fetch failed:', (error as Error).message);
       console.error(`   ⏱️  Failed after: ${duration.toFixed(2)}s`);
-      
+
       // ในกรณีที่ error ให้ขยาย interval
       const errorInterval = Math.min(this.AUTO_FETCH_INTERVAL * 2, this.MAX_FETCH_INTERVAL);
       await this.scheduleNextAutoFetch(errorInterval);
@@ -617,10 +618,10 @@ export class WeatherService {
     }
 
     console.log('🕒 Starting adaptive automatic weather data fetching...');
-    
+
     this.shouldContinueAutoFetch = true;
     this.isAutoFetchRunning = true;
-    
+
     // Run initial fetch
     console.log('🚀 Running initial data fetch...');
     this.runAutoFetchCycle().catch(error => {
@@ -635,12 +636,12 @@ export class WeatherService {
    */
   stopAutoFetch(): void {
     this.shouldContinueAutoFetch = false;
-    
+
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = undefined;
     }
-    
+
     this.isAutoFetchRunning = false;
     console.log('🛑 Stopped automatic weather data fetching');
   }
@@ -660,16 +661,16 @@ export class WeatherService {
     if (newInterval < this.MIN_FETCH_INTERVAL) {
       throw new Error(`Interval too short. Minimum is ${this.MIN_FETCH_INTERVAL / 1000}s`);
     }
-    
+
     if (newInterval > this.MAX_FETCH_INTERVAL) {
       throw new Error(`Interval too long. Maximum is ${this.MAX_FETCH_INTERVAL / 1000}s`);
     }
 
     // อัพเดท AUTO_FETCH_INTERVAL
     (this as any).AUTO_FETCH_INTERVAL = newInterval;
-    
+
     console.log(`📊 Auto-fetch interval updated to ${(newInterval / 1000 / 60).toFixed(1)} minutes`);
-    
+
     // หากกำลังทำงานอยู่ ให้รีสตาร์ท
     if (this.isAutoFetchRunning) {
       console.log('🔄 Restarting auto-fetch with new interval...');
@@ -847,7 +848,7 @@ export class WeatherService {
       if (oldestWeather && newestWeather) {
         stats.dataFreshness.oldestRecord = oldestWeather.created_at;
         stats.dataFreshness.newestRecord = newestWeather.created_at;
-        
+
         const now = new Date();
         const avgAge = (now.getTime() - newestWeather.created_at.getTime()) / (1000 * 60 * 60);
         stats.dataFreshness.averageAge = Math.round(avgAge * 100) / 100;
@@ -884,5 +885,37 @@ export class WeatherService {
     }
 
     return stats;
+  }
+
+  /**
+   * แปลง AQI เป็น PM2.5 (µg/m³)
+   * @param aqi ค่า AQI
+   * @returns ค่า PM2.5 ใน µg/m³
+   */
+  private convertAqiToPm25(aqi: number): number | null {
+    if (aqi === null || aqi === undefined) return null;
+
+    // AQI Breakpoints และ PM2.5 Concentration ตาม EPA Standard
+    const breakpoints = [
+      { aqiLow: 0, aqiHigh: 50, pmLow: 0, pmHigh: 12 },
+      { aqiLow: 51, aqiHigh: 100, pmLow: 12.1, pmHigh: 35.4 },
+      { aqiLow: 101, aqiHigh: 150, pmLow: 35.5, pmHigh: 55.4 },
+      { aqiLow: 151, aqiHigh: 200, pmLow: 55.5, pmHigh: 150.4 },
+      { aqiLow: 201, aqiHigh: 300, pmLow: 150.5, pmHigh: 250.4 },
+      { aqiLow: 301, aqiHigh: 500, pmLow: 250.5, pmHigh: 500.4 }
+    ];
+
+    // หา breakpoint ที่ตรงกับ AQI
+    const breakpoint = breakpoints.find(bp => aqi >= bp.aqiLow && aqi <= bp.aqiHigh);
+
+    if (!breakpoint) return null;
+
+    // คำนวณ PM2.5 ด้วยสูตร linear interpolation
+    const pm25 = (
+      ((aqi - breakpoint.aqiLow) / (breakpoint.aqiHigh - breakpoint.aqiLow)) *
+      (breakpoint.pmHigh - breakpoint.pmLow)
+    ) + breakpoint.pmLow;
+
+    return Math.round(pm25 * 10) / 10; // ปัดเศษให้ 1 ตำแหน่ง
   }
 }
