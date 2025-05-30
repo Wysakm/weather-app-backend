@@ -2,6 +2,7 @@ import { PrismaClient, Prisma, RoleType } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { EmailService } from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -100,6 +101,14 @@ export class AuthService {
       }
     });
 
+    // Send welcome email (non-blocking)
+    try {
+      // await EmailService.sendWelcomeEmail(user);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // Continue - welcome email is not critical
+    }
+
     // Generate token
     const token = this.generateJWT(user);
 
@@ -144,7 +153,11 @@ export class AuthService {
   static async forgotPassword(email: string): Promise<void> {
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id_user: true }
+      select: { 
+        id_user: true,
+        email: true,
+        username: true
+      }
     });
 
     if (!user) {
@@ -172,43 +185,78 @@ export class AuthService {
       })
     ]);
 
-    // TODO: Send email with reset token
-    console.log(`Reset token for ${email}: ${resetToken}`);
+    // Send email with reset token
+    try {
+      console.log('🔑 PASSWORD RESET TOKEN GENERATED:');
+      console.log('==================================');
+      console.log('Email:', user.email);
+      console.log('Token:', resetToken);
+      console.log('Expires at:', expiresAt);
+      console.log('==================================');
+      
+      await EmailService.sendPasswordResetEmail(user.email, user.username, resetToken);
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+      // Continue silently - user will still see success message for security
+    }
   }
 
   // Reset password (optimized)
   static async resetPassword(token: string, newPassword: string): Promise<void> {
-    this.validateInput('dummy@email.com', newPassword); // Validate password only
+    try {
+      console.log('🔍 Starting resetPassword with token:', token.substring(0, 10) + '...');
+      
+      // Validate password first
+      this.validateInput('dummy@email.com', newPassword);
+      
+      // หา reset token ในฐานข้อมูล
+      const resetRecord = await prisma.passwordReset.findFirst({
+        where: {
+          token,
+          used: false,
+          expires_at: {
+            gt: new Date()
+          }
+        },
+        include: {
+          user: true // ต้องมี include user เพื่อดึงข้อมูล user มาด้วย
+        }
+      });
 
-    const resetRecord = await prisma.passwordReset.findFirst({
-      where: {
-        token,
-        expires_at: { gt: new Date() },
-        used: false
-      },
-      select: {
-        id: true,
-        user_id: true
+      console.log('📝 Reset record found:', !!resetRecord);
+      console.log('👤 User in record:', !!resetRecord?.user);
+
+      if (!resetRecord) {
+        throw new Error('Invalid or expired reset token');
       }
-    });
 
-    if (!resetRecord) {
-      throw new Error('Invalid or expired reset token');
+      if (!resetRecord.user) {
+        throw new Error('User not found for this reset token');
+      }
+
+      console.log('✅ User found:', resetRecord.user.email);
+
+      // Hash รหัสผ่านใหม่
+      const hashedPassword = await this.hashPassword(newPassword);
+
+      // อัพเดตรหัสผ่านและ mark token เป็นใช้แล้วใน transaction
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id_user: resetRecord.user_id },
+          data: { password: hashedPassword }
+        }),
+        prisma.passwordReset.update({
+          where: { id: resetRecord.id },
+          data: { used: true }
+        })
+      ]);
+
+      console.log('🎉 Password reset successfully for user:', resetRecord.user.email);
+      
+    } catch (error) {
+      console.error('❌ Error in resetPassword:', error);
+      throw new Error('Error resetting password: ' + (error instanceof Error ? error.message : String(error)));
     }
-
-    const hashedPassword = await this.hashPassword(newPassword);
-
-    // Update password and mark token as used in transaction
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id_user: resetRecord.user_id },
-        data: { password: hashedPassword }
-      }),
-      prisma.passwordReset.update({
-        where: { id: resetRecord.id },
-        data: { used: true }
-      })
-    ]);
   }
 
   // Verify reset token

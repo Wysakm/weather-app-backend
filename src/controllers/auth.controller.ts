@@ -56,8 +56,20 @@ export class AuthController {
   static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email } = req.body;
+      
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+        return;
+      }
+
       await AuthService.forgotPassword(email);
-      res.status(200).json({ message: 'Password reset email sent' });
+      res.status(200).json({ 
+        success: true,
+        message: 'Password reset email sent' 
+      });
     } catch (error) {
       next(error);
     }
@@ -67,8 +79,20 @@ export class AuthController {
   static async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Token and new password are required'
+        });
+        return;
+      }
+
       await AuthService.resetPassword(token, newPassword);
-      res.status(200).json({ message: 'Password reset successfully' });
+      res.status(200).json({ 
+        success: true,
+        message: 'Password reset successfully' 
+      });
     } catch (error) {
       next(error);
     }
@@ -78,8 +102,20 @@ export class AuthController {
   static async verifyResetToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { token } = req.body;
+      
+      if (!token) {
+        res.status(400).json({
+          success: false,
+          message: 'Token is required'
+        });
+        return;
+      }
+
       const isValid = await AuthService.verifyResetToken(token);
-      res.status(200).json({ valid: isValid });
+      res.status(200).json({ 
+        success: true,
+        valid: isValid 
+      });
     } catch (error) {
       next(error);
     }
