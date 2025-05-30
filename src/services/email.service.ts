@@ -119,6 +119,66 @@ export class EmailService {
     }
   }
 
+  // Static methods for template generation (for testing)
+  static getPasswordResetTemplate(username: string, resetUrl: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #2c3e50; text-align: center;">🌤️ Weather App</h2>
+          <h3 style="color: #34495e;">Password Reset Request</h3>
+          
+          <p>Hello <strong>${username}</strong>,</p>
+          
+          <p>You requested to reset your password for Weather App. Click the button below to reset it:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #3498db; color: white; padding: 15px 30px; 
+                      text-decoration: none; border-radius: 5px; font-weight: bold;
+                      display: inline-block;">
+              🔐 Reset Password
+            </a>
+          </div>
+          
+          <p style="color: #e74c3c; font-weight: bold;">⏰ This link will expire in 1 hour.</p>
+          
+          <p>If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  static getWelcomeTemplate(username: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #2c3e50; text-align: center;">🌤️ Welcome to Weather App!</h2>
+          
+          <p>Hello <strong>${username}</strong>,</p>
+          
+          <p>Welcome to Weather App! We're excited to have you on board. 🎉</p>
+          
+          <p>You can now:</p>
+          <ul>
+            <li>📍 Share weather updates from your location</li>
+            <li>📱 View weather posts from other users</li>
+            <li>🌟 Connect with weather enthusiasts</li>
+          </ul>
+          
+          <p>Thank you for joining our community!</p>
+          
+          <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #e8f5e8; border-radius: 5px;">
+            <p style="margin: 0; color: #27ae60; font-weight: bold;">Ready to start sharing weather updates? 🌦️</p>
+          </div>
+          
+          <p style="text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 14px;">
+            Best regards,<br>The Weather App Team
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
   // Test method for debugging
   static async testConnection(): Promise<boolean> {
     console.log('🧪 ทดสอบการเชื่อมต่อ Gmail...');

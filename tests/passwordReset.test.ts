@@ -1,7 +1,5 @@
 import { AuthService } from '../src/services/auth.service';
-    expect(AuthService.generateSecureToken().length).toBe(64);
-  });
-});e } from '../src/services/email.service';
+import { EmailService } from '../src/services/email.service';
 
 // Mock dependencies for AuthService tests only
 jest.mock('@prisma/client', () => ({
