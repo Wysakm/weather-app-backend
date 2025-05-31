@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "argon-fire-461509-f2",
+  "private_key_id": "a1ab50178d2e6f3c5ffee1b0e33ea73ba553d804",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDmwLvvB4XCpcXU\nYbw0MK2Z8N8vH189HXtiN95G2Sfx8LUkjSq8dbLgn1KYQbZjhNgJPcjZNBNO+nMH\nwupmrTS8Y6gnu7+D8vnfeFfRmlBpTVgX4qOQLhftw/qtPvkA5M5wXc82Z+riyHAz\nXwrn2NoTrXLKFsS6pzpRW8yIskJ0dQfLcZlBHM1895Lkpo7T2ouQvb6U2KSSypYO\n48BVkh1Ar4VdLl7I77U6n6DX3SXmQOPt9N3D9bBIeUrXee8TsR6FOfMj30B4VVvQ\nZZVkOINK3ULY32W1B/t8mrb9Goi48o2Tq7paLxEf6BcOaqKK7vpY2gmg+fkBC9WR\nqNnX/yjRAgMBAAECggEAKSMX/fN93acW/xdTaYx6DnUaHLj/jhIo8mgaWNAS5ndu\nm68M/N8Qvim5HEquvMwshW091rcJcC2G/0244wgi3Cj6C+dVK61P7Y5zPXtAtZ0j\nxNJTLXuCKZGkKWmOE6I2yWJ38++PuNFZ61aYx59ptVNZIPzxIoN4ipOOgZoh7ceu\nplhOFrlWaN7MuxMkaqtagQSTethiFpI8NOaGYu/7nsdH1KlhvbPHtog8t5/T+TRy\n2/Zg+bWyXnxZcPEhuLIyLZ8MPsfm78dSsjsi1o9rviZ4kvmvQWozu6komBro1yqa\nnhZMoVXUtBNFmvqQfAtBmQFpeRfC3AJeYsN61nJVSQKBgQD48HAtZR5+fDl2El06\n3kxhV3kYcIr/dfSr4+YRDa8z0FHti3FMTEqSOt3YAZzh5MHUXJM6GLvCGNBZl9Yt\n9KIUl16RK6ttfDNqXOknCkqQpSisdRMDUNcnKBwP4VjsgNivlanqca4VIbdAlBrO\nA1r+SgaSgieN69wL8pTh9asa9QKBgQDtTD5sdhX4Rg3josZSIjzFlpNPdnDKxKLB\nv+qmA19upIFtLmhSWGoTqlCvJiY+cI4flkMsUP31JmL+CdL1ZPUZP8RmleqUwMTz\n0PwpP/hOItjHqI+m+3pT0tkpmyMgnbzQmaqW9Twxco0MHGsfF1fpbXiwAHsPKL+X\n5uJTfyHk7QKBgQDi2O/QXio4pukR8FAm2fYOalC+dagkfQ/WJ5o6hhbXB4nxBrXb\nClaWBLCuK2IT84qyAx5ivbEzgbszOYsCW7/rNbkGXx4baifMUBhi7BzgzLBQ32rR\nBbTaSNGxou+OrSdIcgDh1HAHb673WT9H5oTf3wM4NQTobjsaZBdKBb3DlQKBgQCB\ncrEu67AKcvTKtBYp4gFy7DRKCdt30ZLTzMTNcVOTAOyVydYg7ZhYR/WhxlbggvgU\n5RyZxUj0fc9Ms8FAGqXV80JJkAiawxntw5h7TClBPqMxL5PFzLOrnH7YwoeEGGhT\nBzDXDsqaUtn8vFf3av2LGivXHzwCRgFWdR4L3HN59QKBgH8iAtfq8LRTqM/Rdre1\nKIBYBVBW9Av7DEwp26hAoCGKbPmbUjSpKdpbBOsgXHhIFCHt0AQMsycc/wsHjh0L\nFjTW8ziz48Vix6hGaa3qm+ujvWkY28B6cnU7HWTlAw7eXYTxmt+hOu9VSx4lrfMX\nGJKxP8TjCGZIiKtQYNVDTc5v\n-----END PRIVATE KEY-----\n",
+  "client_email": "weather-app@argon-fire-461509-f2.iam.gserviceaccount.com",
+  "client_id": "106910762879318974935",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/weather-app%40argon-fire-461509-f2.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

@@ -8,6 +8,7 @@ import postRoutes from './routes/post.routes';
 import provinceRoutes from './routes/province.routes';
 import weatherRoutes from './routes/weatherRoutes';
 import aqiRoutes from './routes/aqiRoutes';
+import uploadRoutes from './routes/upload.Routes';
 import { errorHandler } from './middleware/error.middleware';
 import dotenv from 'dotenv';
 
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
 // Routes
+app.use('/api/upload', uploadRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/place-types', placeTypeRoutes);
 app.use('/api/places', placeRoutes);

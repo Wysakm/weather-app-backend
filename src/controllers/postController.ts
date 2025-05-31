@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { deleteImageFromGCS } from '../services/uploadService';
 
 const prisma = new PrismaClient();
 
@@ -24,7 +25,8 @@ interface PostData {
   title: string;
   body: string;
   id_place: string;
-  image?: string;
+  image?: string; // Cover image
+  gallery_images?: string[]; // Multiple images (ถ้าต้องการ)
 }
 
 // Interface สำหรับ Query parameters
@@ -195,7 +197,7 @@ export const getPostById = async (req: Request, res: Response) => {
 // สร้าง post ใหม่
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, body, id_place, image }: PostData = req.body;
+    const { title, body, id_place, image, gallery_images }: PostData = req.body;
     const userId = req.user?.id_user;
 
     // Validate required fields
@@ -204,6 +206,25 @@ export const createPost = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'กรุณากรอกข้อมูลให้ครบถ้วน (title, body, id_place)'
       });
+    }
+
+    // Validate image URLs if provided
+    if (image && !image.startsWith('https://storage.googleapis.com/')) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL รูปภาพไม่ถูกต้อง กรุณาใช้ endpoint upload-image ก่อน'
+      });
+    }
+
+    // Validate gallery images URLs if provided
+    if (gallery_images && gallery_images.length > 0) {
+      const invalidUrls = gallery_images.filter(url => !url.startsWith('https://storage.googleapis.com/'));
+      if (invalidUrls.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'URL รูปภาพ gallery ไม่ถูกต้อง'
+        });
+      }
     }
 
     // ตรวจสอบว่า place มีอยู่จริง
@@ -226,7 +247,8 @@ export const createPost = async (req: AuthRequest, res: Response) => {
         id_place,
         id_user: userId!,
         image,
-        status: 'pending' // default status
+        // gallery_images: gallery_images ? JSON.stringify(gallery_images) : null, // ถ้าต้องการเก็บ JSON
+        status: 'pending'
       },
       include: {
         user: {
@@ -286,6 +308,19 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'คุณไม่มีสิทธิ์ในการแก้ไข post นี้'
       });
+    }
+
+    // Validate image URL format if provided
+    if (image && image !== null && !image.startsWith('https://storage.googleapis.com/')) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL รูปภาพไม่ถูกต้อง กรุณาใช้ endpoint upload-image ก่อน'
+      });
+    }
+
+    // ถ้ามีการเปลี่ยนรูปภาพ ให้ลบรูปเก่าออกจาก GCS
+    if (image !== existingPost.image && existingPost.image) {
+      await deleteImageFromGCS(existingPost.image);
     }
 
     // อัปเดต post
@@ -353,6 +388,11 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'คุณไม่มีสิทธิ์ในการลบ post นี้'
       });
+    }
+
+    // ลบรูปภาพจาก GCS ถ้ามี
+    if (existingPost.image) {
+      await deleteImageFromGCS(existingPost.image);
     }
 
     // ลบ post
