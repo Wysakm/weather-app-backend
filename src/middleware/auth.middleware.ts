@@ -37,3 +37,33 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     next();
   });
 };
+
+// Admin-only authorization middleware
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const userRole = req.user?.role?.role_name;
+  
+  if (userRole !== 'ADMIN') {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin role required'
+    });
+    return;
+  }
+  
+  next();
+};
+
+// Admin or Moderator authorization middleware
+export const requireAdminOrModerator = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const userRole = req.user?.role?.role_name;
+  
+  if (!['ADMIN', 'MODERATOR'].includes(userRole || '')) {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin or Moderator role required'
+    });
+    return;
+  }
+  
+  next();
+};

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import passport from './config/passport.config';
 import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
 import placeTypeRoutes from './routes/placeType.routes';
 import placeRoutes from './routes/place.routes';
 import postRoutes from './routes/post.routes';
@@ -25,6 +26,7 @@ app.use(passport.initialize());
 // Routes
 app.use('/api/upload', uploadRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/place-types', placeTypeRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/posts', postRoutes);
