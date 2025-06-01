@@ -33,26 +33,30 @@ const upload = multer({
 // Upload file to Google Cloud Storage
 export const uploadImageToGCS = async (file: Express.Multer.File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    debugger
+    // debugger
     const fileName = `posts/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.originalname}`;
     const blob = bucket.file(fileName);
     const blobStream = blob.createWriteStream({
       metadata: {
         contentType: file.mimetype,
       },
-      public: true,
+      // public: true,
     });
 
     blobStream.on('error', (error) => {
+      // debugger
       reject(error);
     });
     blobStream.on('finish', () => {
+      // debugger
       console.log('blobStream:', { blobStream, fileName, file });
       // Make the file public and return URL
-      blob.makePublic().then(() => {
-        const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
-        resolve(publicUrl);
-      }).catch(reject);
+      // blob.makePublic().then(() => {
+      //   const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+      //   resolve(publicUrl);
+      // }).catch(reject);
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+      resolve(publicUrl);
     });
 
     blobStream.end(file.buffer);
