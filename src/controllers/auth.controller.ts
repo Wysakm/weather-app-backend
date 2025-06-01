@@ -171,4 +171,31 @@ export class AuthController {
       });
     }
   }
+
+  // Update profile
+  static async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req.user as any).id_user;
+      const profileData = req.body;
+
+      // Validate input
+      if (!profileData || Object.keys(profileData).length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Profile data is required'
+        });
+        return;
+      }
+
+      const updatedUser = await AuthService.updateProfile(userId, profileData);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: { user: updatedUser }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

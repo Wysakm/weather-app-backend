@@ -336,4 +336,58 @@ export class AuthService {
       throw new Error('Invalid token');
     }
   }
+
+  // Update user profile
+  static async updateProfile(userId: string, profileData: {
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+    phonenumber?: string;
+  }): Promise<any> {
+    try {
+      // Validate input - only allow updating specific fields
+      const allowedFields = ['first_name', 'last_name', 'display_name', 'phonenumber'];
+      const updateData: any = {};
+
+      // Filter only allowed fields and non-empty values
+      for (const [key, value] of Object.entries(profileData)) {
+        if (allowedFields.includes(key) && value !== undefined && value !== null) {
+          updateData[key] = value;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        throw new Error('No valid fields to update');
+      }
+
+      // Update user profile
+      const updatedUser = await prisma.user.update({
+        where: { id_user: userId },
+        data: updateData,
+        select: {
+          id_user: true,
+          username: true,
+          email: true,
+          first_name: true,
+          last_name: true,
+          display_name: true,
+          phonenumber: true,
+          is_verified: true,
+          created_at: true,
+          updated_at: true,
+          role: {
+            select: {
+              id_role: true,
+              role_name: true
+            }
+          }
+        }
+      });
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw new Error('Error updating profile: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  }
 }

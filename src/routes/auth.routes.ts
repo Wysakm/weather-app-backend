@@ -23,6 +23,7 @@ router.post('/verify', AuthController.verifyToken);
 
 // Protected routes
 router.get('/me', passport.authenticate('jwt', { session: false }), AuthController.getMe);
+router.put('/profile', passport.authenticate('jwt', { session: false }), AuthController.updateProfile);
 router.post('/change-password', passport.authenticate('jwt', { session: false }), AuthController.changePassword);
 
 export default router;
