@@ -12,8 +12,8 @@ const storage = new Storage({
 const bucketName = process.env.GOOGLE_CLOUD_STORAGE_BUCKET || 'weather-app-images';
 const bucket = storage.bucket(bucketName);
 
-console.log(' storage:', { storage, bucketName, bucket })
-debugger
+// console.log(' storage:', { storage, bucketName, bucket })
+// debugger
 // Configure multer for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -49,7 +49,7 @@ export const uploadImageToGCS = async (file: Express.Multer.File): Promise<strin
     });
     blobStream.on('finish', () => {
       // debugger
-      console.log('blobStream:', { blobStream, fileName, file });
+      // console.log('blobStream:', { blobStream, fileName, file });
       // Make the file public and return URL
       // blob.makePublic().then(() => {
       //   const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
@@ -82,6 +82,15 @@ export const deleteImageFromGCS = async (imageUrl: string): Promise<void> => {
     const fileName = urlParts.slice(-2).join('/'); // posts/filename.jpg
 
     const file = bucket.file(fileName);
+    // debugger
+    // console.log(' file:', file)
+    await file.exists().then(data => {
+      const exists = data[0];
+      if (!exists) {
+        console.log('File does not exist in GCS');
+      }
+    });
+
     await file.delete();
   } catch (error) {
     console.error('Error deleting image from GCS:', error);
