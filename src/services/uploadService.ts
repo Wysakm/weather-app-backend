@@ -84,12 +84,10 @@ export const deleteImageFromGCS = async (imageUrl: string): Promise<void> => {
     const file = bucket.file(fileName);
     // debugger
     // console.log(' file:', file)
-    await file.exists().then(data => {
-      const exists = data[0];
-      if (!exists) {
-        console.log('File does not exist in GCS');
-      }
-    });
+    const [exists] = await file.exists();
+    if (!exists) {
+      return;
+    }
 
     await file.delete();
   } catch (error) {

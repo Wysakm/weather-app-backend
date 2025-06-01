@@ -286,7 +286,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, body, image } = req.body;
+    const { title, body, image, status } = req.body;
     const userId = req.user?.id_user;
     const userRole = req.user?.role.role_name;
 
@@ -302,11 +302,27 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // ตรวจสอบสิทธิ์ (เฉพาะเจ้าของ post หรือ admin/moderator)
+    // ตรวจสอบสิทธิ์ในการแก้ไข content (เฉพาะเจ้าของ post หรือ admin/moderator)
     if (existingPost.id_user !== userId && userRole !== 'ADMIN' && userRole !== 'MODERATOR') {
       return res.status(403).json({
         success: false,
         message: 'คุณไม่มีสิทธิ์ในการแก้ไข post นี้'
+      });
+    }
+
+    // ตรวจสอบสิทธิ์ในการเปลี่ยน status (เฉพาะ admin/moderator)
+    if (status && userRole !== 'ADMIN' && userRole !== 'MODERATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'คุณไม่มีสิทธิ์ในการเปลี่ยนสถานะ post'
+      });
+    }
+
+    // ตรวจสอบ status values
+    if (status && !['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'status ต้องเป็น pending, approved หรือ rejected'
       });
     }
 
@@ -329,7 +345,8 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
       data: {
         ...(title && { title }),
         ...(body && { body }),
-        ...(image !== undefined && { image })
+        ...(image !== undefined && { image }),
+        ...(status && { status })
       },
       include: {
         user: {
