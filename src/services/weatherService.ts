@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import { WeatherScoringService } from './weatherScoringService';
 
 const prisma = new PrismaClient();
 
@@ -52,7 +53,7 @@ interface BatchProcessingStats {
 }
 
 export class WeatherService {
-  private timeoutId?: NodeJS.Timeout;
+    private timeoutId?: NodeJS.Timeout;
   private isAutoFetchRunning = false;
   private shouldContinueAutoFetch = false;
   private readonly API_DELAY = 1000; // 1 วินาทีระหว่างการเรียก API
@@ -63,6 +64,9 @@ export class WeatherService {
   private readonly MAX_RETRIES = 3; // จำนวนครั้งสูงสุดในการ retry
   private readonly RETRY_DELAY = 2000; // หน่วงเวลาก่อน retry (milliseconds)
   private readonly HTTP_TIMEOUT = 10000; // timeout สำหรับ HTTP requests (10 วินาที)
+  
+  // Weather Scoring Service
+  private weatherScoringService = new WeatherScoringService();
 
   /**
    * หน่วงเวลาแบบ exponential backoff
@@ -253,6 +257,22 @@ export class WeatherService {
         stats.errors.slice(0, 5).forEach(error => console.log(`   • ${error}`));
         if (stats.errors.length > 5) {
           console.log(`   ... and ${stats.errors.length - 5} more errors`);
+        }
+      }
+
+      // 🎯 คำนวณคะแนนสภาพอากาศหลังจากดึงข้อมูลเสร็จ (เฉพาะ manual fetch)
+      if (stats.successful > 0) {
+        console.log('🎯 Calculating weather scores...');
+        try {
+          const scores = await this.weatherScoringService.calculateAllProvinceScores();
+          console.log(`✅ Weather scores calculated for ${scores.length} provinces`);
+          
+          if (scores.length > 0) {
+            const topProvince = scores[0];
+            console.log(`🏆 Best weather: ${topProvince.province_name} (${topProvince.total_score} points)`);
+          }
+        } catch (scoreError) {
+          console.error('❌ Error calculating weather scores:', (scoreError as Error).message);
         }
       }
 
@@ -591,6 +611,24 @@ export class WeatherService {
       const successRate = (stats.successful / stats.total) * 100;
       if (successRate < 80) {
         console.warn(`⚠️  Low success rate: ${successRate.toFixed(1)}%`);
+      }
+
+      // 🎯 คำนวณคะแนนสภาพอากาศหลังจากดึงข้อมูลเสร็จ
+      if (successRate >= 50) { // คำนวณคะแนนเฉพาะเมื่อมีข้อมูลเพียงพอ
+        console.log('🎯 Calculating weather scores...');
+        try {
+          const scores = await this.weatherScoringService.calculateAllProvinceScores();
+          console.log(`✅ Weather scores calculated for ${scores.length} provinces`);
+          
+          if (scores.length > 0) {
+            const topProvince = scores[0];
+            console.log(`🏆 Best weather: ${topProvince.province_name} (${topProvince.total_score} points)`);
+          }
+        } catch (scoreError) {
+          console.error('❌ Error calculating weather scores:', (scoreError as Error).message);
+        }
+      } else {
+        console.log('⚠️  Skipping score calculation due to insufficient data');
       }
 
       // กำหนด interval ถัดไปตามผลลัพธ์

@@ -90,6 +90,7 @@ model WeatherData {
 
   // Relations
   province MsProvince? @relation(fields: [id_province], references: [id_province])
+  weather_scores WeatherScore[]
 
   @@map("weather_data")
 }
@@ -109,6 +110,7 @@ model AqiData {
 
   // Relations
   province MsProvince? @relation(fields: [id_province], references: [id_province])
+  weather_scores WeatherScore[]
 
   @@map("aqi_data")
 }
@@ -155,6 +157,7 @@ model MsProvince {
   places       Place[]
   weather_data WeatherData[]
   aqi_data     AqiData[]
+  weather_scores WeatherScore[]
 
   @@map("ms_province")
 }
@@ -185,4 +188,35 @@ model PasswordReset {
   user User @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
 
   @@map("password_reset")
+}
+
+model WeatherScore {
+  id_score         String   @id @default(uuid())
+  id_province      String
+  score            Decimal  @db.Decimal(4,2) // คะแนนรวม 0.00 - 100.00
+  rank             Int?                       // อันดับ (1 = ดีที่สุด)
+  
+  // รายละเอียดคะแนนย่อย
+  aqi_score        Decimal? @db.Decimal(4,2) // 0.00 - 10.00
+  pm25_score       Decimal? @db.Decimal(4,2) // 0.00 - 10.00
+  pm10_score       Decimal? @db.Decimal(4,2) // 0.00 - 5.00
+  temperature_score Decimal? @db.Decimal(4,2) // 0.00 - 15.00
+  humidity_score   Decimal? @db.Decimal(4,2) // 0.00 - 10.00
+  rain_score       Decimal? @db.Decimal(4,2) // 0.00 - 15.00
+  uv_score         Decimal? @db.Decimal(4,2) // 0.00 - 10.00
+  wind_score       Decimal? @db.Decimal(4,2) // 0.00 - 10.00
+  comfort_score    Decimal? @db.Decimal(4,2) // 0.00 - 15.00 (อุณหภูมิที่รู้สึก + ความชื้น)
+  
+  // ข้อมูลที่ใช้ในการคำนวณ
+  weather_data_id  String?
+  aqi_data_id      String?
+  calculated_at    DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // Relations
+  province         MsProvince    @relation(fields: [id_province], references: [id_province])
+  weather_data     WeatherData?  @relation(fields: [weather_data_id], references: [id_weather])
+  aqi_data         AqiData?      @relation(fields: [aqi_data_id], references: [id_aqi])
+
+  @@map("weather_score")
 }

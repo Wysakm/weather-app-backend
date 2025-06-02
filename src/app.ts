@@ -8,6 +8,7 @@ import placeRoutes from './routes/place.routes';
 import postRoutes from './routes/post.routes';
 import provinceRoutes from './routes/province.routes';
 import weatherRoutes from './routes/weatherRoutes';
+import weatherScoreRoutes from './routes/weatherScoreRoutes';
 import aqiRoutes from './routes/aqiRoutes';
 import uploadRoutes from './routes/upload.Routes';
 import { errorHandler } from './middleware/error.middleware';
@@ -32,6 +33,7 @@ app.use('/api/places', placeRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/provinces', provinceRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/weather', weatherScoreRoutes); // Weather Scoring System routes
 app.use('/api/aqi', aqiRoutes);
 
 // Health check
