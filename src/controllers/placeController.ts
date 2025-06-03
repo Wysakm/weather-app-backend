@@ -9,6 +9,7 @@ interface PlaceQueryParams {
   province_id?: string;
   place_type_id?: string;
   search?: string;
+  gg_ref?: string;
 }
 
 interface NearbyQueryParams {
@@ -21,13 +22,14 @@ export class PlaceController {
   // GET /api/places - ดึงข้อมูลสถานที่ทั้งหมด
   getAllPlaces = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { page = '1', limit = '10', province_id, place_type_id, search }: PlaceQueryParams = req.query;
+      const { page = '1', limit = '10', province_id, place_type_id, gg_ref, search }: PlaceQueryParams = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
       const where: Prisma.PlaceWhereInput = {};
 
       if (province_id) where.province_id = province_id as string;
       if (place_type_id) where.place_type_id = place_type_id as string;
+      if (gg_ref) where.gg_ref = gg_ref as string;
       if (search) {
         where.name_place = {
           contains: search as string,
