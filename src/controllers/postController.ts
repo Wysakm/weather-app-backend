@@ -39,6 +39,7 @@ interface PostQueryParams {
   id_place?: string;
   place_type_id?: string;
   province_id?: string;
+  placeType?: string;
 }
 
 // ดึงข้อมูล posts ทั้งหมด พร้อม pagination และ filtering
@@ -88,11 +89,11 @@ export const getAllPosts = async (req: Request, res: Response) => {
     // กรองตาม place_type_id หรือ province_id
     if (place_type_id || province_id) {
       where.place = {};
-      
+
       if (place_type_id) {
         where.place.place_type_id = place_type_id;
       }
-      
+
       if (province_id) {
         where.place.province_id = province_id;
       }
@@ -782,10 +783,17 @@ export const getPendingPosts = async (req: AuthRequest, res: Response) => {
 };
 
 // ดึงข้อมูล posts ตาม province พร้อม weather data
+enum PlaceType {
+  RECOMMENDED = 'recommended',
+  STAY = 'stay',
+  CAMP = 'camp'
+}
 export const getPostsByProvince = async (req: Request, res: Response) => {
   try {
     const { provinceId } = req.params;
-    const { page = '1', limit = '10' }: PostQueryParams = req.query;
+    const { page = '1', limit = '10', placeType = ''  }: PostQueryParams = req.query;
+
+    console.log('Fetching posts for province:', { params: req.params, query: req.query });
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -803,13 +811,51 @@ export const getPostsByProvince = async (req: Request, res: Response) => {
       });
     }
 
+    // สร้าง where clause สำหรับ filtering ตาม place type
+    const whereClause: any = {
+      place: {
+        province_id: provinceId
+      }
+    };
+
+    // กรองตาม placeType
+    if (placeType) {
+      if (placeType === 'recommended') {
+        // แสดงเฉพาะ stay และ camp (ไม่รวม recommended)
+        whereClause.place.place_type = {
+          type_name: {
+            notIn: ['stay', 'camp']
+          }
+        };
+      } else if (placeType === 'stay') {
+        // แสดงเฉพาะ stay
+        whereClause.place.place_type = {
+          type_name: 'stay'
+        };
+      } else if (placeType === 'camp') {
+        // แสดงเฉพาะ camp
+        whereClause.place.place_type = {
+          type_name: 'camp'
+        };
+      }
+    }
+    // ถ้า placeType เป็น null หรือ undefined จะแสดงทั้งหมด
+    console.log('Where clause for posts by province:', whereClause);
     // ดึงข้อมูล posts ของ province นั้น
     const posts = await prisma.post.findMany({
       where: {
-        place: {
-          province_id: provinceId
-        }
+        ...whereClause,
+        status: 'approved' // แสดงเฉพาะ posts ที่ได้รับการอนุมัติ
       },
+      // where: {
+      //   place: {
+      //     place_type: {
+      //       type_name: {
+      //         notIn: ['recommended'] // แสดงเฉพาะ stay และ camp
+      //       }
+      //     }
+      //   }
+      // },
       include: {
         user: {
           select: {
@@ -833,11 +879,7 @@ export const getPostsByProvince = async (req: Request, res: Response) => {
     });
 
     const totalPosts = await prisma.post.count({
-      where: {
-        place: {
-          province_id: provinceId
-        }
-      }
+      where: whereClause
     });
 
     const totalPages = Math.ceil(totalPosts / limitNum);
