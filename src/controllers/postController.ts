@@ -40,7 +40,8 @@ interface PostQueryParams {
   place_type_id?: string;
   province_id?: string;
   placeType?: string;
-  gg_ref?: string; // Google Maps reference (ถ้ามี)
+  gg_ref?: string;
+  distinct?: string;
 }
 
 // ดึงข้อมูล posts ทั้งหมด พร้อม pagination และ filtering
@@ -799,7 +800,7 @@ enum PlaceType {
 export const getPostsByProvince = async (req: Request, res: Response) => {
   try {
     const { provinceId } = req.params;
-    const { page = '1', limit = '10', placeType = ''  }: PostQueryParams = req.query;
+    const { page = '1', limit = '10', placeType = '', distinct = 'f'  }: PostQueryParams = req.query;
 
     console.log('Fetching posts for province:', { params: req.params, query: req.query });
 
@@ -853,8 +854,14 @@ export const getPostsByProvince = async (req: Request, res: Response) => {
     const posts = await prisma.post.findMany({
       where: {
         ...whereClause,
-        status: 'approved' // แสดงเฉพาะ posts ที่ได้รับการอนุมัติ
+        status: 'approved',
+        // distinct: distinct === 't' ? ['id_place'] : undefined // ถ้า distinct เป็น true จะไม่ซ้ำ id_place
       },
+      distinct:  distinct === 't' ? ['id_place'] : undefined, // ถ้า distinct เป็น true จะไม่ซ้ำ id_place
+      // include: {
+      //   place['id_place'], // ถ้า distinct เป็น true จะไม่ซ้ำ id_place
+      
+      // }
       // where: {
       //   place: {
       //     place_type: {
