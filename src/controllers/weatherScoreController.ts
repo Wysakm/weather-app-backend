@@ -74,8 +74,22 @@ export class WeatherScoreController {
         rank: score.rank || (index + 1),
         province_id: score.id_province,
         province_name: score.province.name,
+        latitude: Number(score.province.latitude),
+        longitude: Number(score.province.longitude),
         total_score: Number(score.score),
         weather_grade: this.getWeatherGrade(Number(score.score)),
+        aqi_data: score.aqi_data ? {
+          aqi: Number(score.aqi_data.aqi) || null,
+          pm25: Number(score.aqi_data.pm25) || null,
+          pm10: Number(score.aqi_data.pm10) || null,
+          measured_at: score.aqi_data.created_at
+        } : null,
+        weather_data: score.weather_data ? {
+          temperature_2m: Number(score.weather_data.temperature_2m) || null,
+          apparent_temperature: Number(score.weather_data.apparent_temperature) || null,
+          precipitation_probability_max: Number(score.weather_data.precipitation_probability_max) || null,
+          recorded_at: score.weather_data.recorded_at
+        } : null,
         calculated_at: score.calculated_at
       }));
 

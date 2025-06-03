@@ -95,6 +95,8 @@ GET /api/weather/rankings
         "rank": 1,
         "province_id": "uuid",
         "province_name": "เชียงใหม่",
+        "latitude": 18.7883,
+        "longitude": 98.9853,
         "total_score": 85.50,
         "weather_grade": "A",
         "calculated_at": "2025-06-02T12:00:00Z"

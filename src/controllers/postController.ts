@@ -286,7 +286,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, body, image, status } = req.body;
+    const { title, body, image, status, id_place } = req.body;
     const userId = req.user?.id_user;
     const userRole = req.user?.role.role_name;
 
@@ -326,6 +326,20 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // ตรวจสอบว่า place ใหม่มีอยู่จริง (ถ้ามีการส่ง id_place มา)
+    if (id_place) {
+      const place = await prisma.place.findUnique({
+        where: { id_place }
+      });
+
+      if (!place) {
+        return res.status(400).json({
+          success: false,
+          message: 'ไม่พบสถานที่ที่ระบุ'
+        });
+      }
+    }
+
     // Validate image URL format if provided
     if (image && image !== null && !image.startsWith('https://storage.googleapis.com/')) {
       return res.status(400).json({
@@ -346,7 +360,8 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
         ...(title && { title }),
         ...(body && { body }),
         ...(image !== undefined && { image }),
-        ...(status && { status })
+        ...(status && { status }),
+        ...(id_place && { id_place })
       },
       include: {
         user: {

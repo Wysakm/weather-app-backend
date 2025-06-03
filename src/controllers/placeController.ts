@@ -25,7 +25,7 @@ export class PlaceController {
       const skip = (Number(page) - 1) * Number(limit);
 
       const where: Prisma.PlaceWhereInput = {};
-      
+
       if (province_id) where.province_id = province_id as string;
       if (place_type_id) where.place_type_id = place_type_id as string;
       if (search) {
@@ -124,11 +124,11 @@ export class PlaceController {
     try {
       console.log('=== CREATE PLACE REQUEST ===');
       console.log('Request Body:', req.body);
-      
-      const { 
-        name_place, 
-        latitude, 
-        longitude, 
+
+      const {
+        name_place,
+        latitude,
+        longitude,
         place_type_id,
         province_id,
         district,
@@ -136,7 +136,6 @@ export class PlaceController {
         place_image,
         google_place_id
       } = req.body;
-      
       // Validate required fields
       if (!name_place || !latitude || !longitude || !place_type_id) {
         res.status(400).json({
@@ -207,9 +206,9 @@ export class PlaceController {
           id_place_type: place_type_id
         }
       });
-      
+
       console.log('Found place type:', placeType);
-      
+
       if (!placeType) {
         console.log('❌ Place type not found');
         res.status(400).json({
@@ -221,14 +220,13 @@ export class PlaceController {
 
       // หาจังหวัด
       let selectedProvinceId: string;
-      
       if (province_id) {
         const foundProvince = await prisma.msProvince.findUnique({
-          where: { 
+          where: {
             id_province: province_id
           }
         });
-        
+
         if (foundProvince) {
           selectedProvinceId = foundProvince.id_province;
         } else {
@@ -243,7 +241,7 @@ export class PlaceController {
         const defaultProvince = await prisma.msProvince.findFirst({
           where: { name: 'Bangkok' }
         });
-        
+
         if (!defaultProvince) {
           res.status(400).json({
             success: false,
@@ -251,22 +249,24 @@ export class PlaceController {
           });
           return;
         }
-        
+
         selectedProvinceId = defaultProvince.id_province;
       }
 
+      const _data = {
+        name_place,
+        latitude: parseFloat(latitude.toString()),
+        longitude: parseFloat(longitude.toString()),
+        place_type_id: place_type_id,
+        province_id: selectedProvinceId,
+        district: district || null,
+        sub_district: sub_district || null,
+        place_image: place_image || null,
+        gg_ref: google_place_id || null
+      }
+
       const place = await prisma.place.create({
-        data: {
-          name_place,
-          latitude: parseFloat(latitude.toString()),
-          longitude: parseFloat(longitude.toString()),
-          place_type_id: place_type_id,
-          province_id: selectedProvinceId,
-          district: district || null,
-          sub_district: sub_district || null,
-          place_image: place_image || null,
-          gg_ref: google_place_id || null
-        },
+        data: _data,
         include: {
           place_type: true,
           province: true
@@ -396,7 +396,7 @@ export class PlaceController {
 
       // Determine province
       let selectedProvinceId: string = '';
-      
+
       if (province_id) {
         // ใช้ province_id ที่ส่งมา
         const foundProvince = await prisma.msProvince.findUnique({
@@ -833,18 +833,18 @@ export class PlaceController {
     try {
       // เรียก Google Places API Nearby Search หรือ Geocoding API
       // เพื่อค้นหา place_id จากพิกัดที่ให้มา
-      
+
       // ตัวอย่างการใช้ Google Geocoding API
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.GOOGLE_MAPS_API_KEY}`
       );
-      
+
       const data: any = await response.json();
-      
+
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         return data.results[0].place_id;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error finding Google Place ID:', error);

@@ -1,6 +1,9 @@
 // Weather Scoring System - Frontend Integration Examples
 // ====================================================
 
+// 🆕 NEW: Rankings endpoint now includes latitude and longitude coordinates
+// Each ranking object now has: { rank, province_id, province_name, latitude, longitude, total_score, weather_grade, calculated_at }
+
 // 1. 🏆 Weather Rankings Component
 class WeatherRankings {
   async fetchRankings(limit = 10) {
