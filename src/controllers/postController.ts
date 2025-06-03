@@ -40,6 +40,7 @@ interface PostQueryParams {
   place_type_id?: string;
   province_id?: string;
   placeType?: string;
+  gg_ref?: string; // Google Maps reference (ถ้ามี)
 }
 
 // ดึงข้อมูล posts ทั้งหมด พร้อม pagination และ filtering
@@ -53,8 +54,10 @@ export const getAllPosts = async (req: Request, res: Response) => {
       id_user,
       id_place,
       place_type_id,
-      province_id
+      province_id,
+      gg_ref,
     }: PostQueryParams = req.query;
+      console.log(' id_place:', id_place)
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -84,6 +87,10 @@ export const getAllPosts = async (req: Request, res: Response) => {
     // กรองตาม place
     if (id_place) {
       where.id_place = id_place;
+    }
+    // กรองตาม gg_ref (Google Maps reference)
+    if (gg_ref) {
+      where.gg_ref = gg_ref;
     }
 
     // กรองตาม place_type_id หรือ province_id
@@ -123,6 +130,7 @@ export const getAllPosts = async (req: Request, res: Response) => {
       skip,
       take: limitNum
     });
+    console.log(' posts:', posts)
 
     // นับจำนวน posts ทั้งหมดสำหรับ pagination
     const totalPosts = await prisma.post.count({ where });
