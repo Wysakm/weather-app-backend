@@ -59,7 +59,7 @@ export class AuthService {
   }
 
   // Register user (optimized with single transaction)
-  static async register(email: string, password: string, username: string, role = RoleType.USER) {
+  static async register(email: string, password: string, username: string, role = RoleType.USER, first_name?: string, last_name?: string, display_name?: string, phonenumber?: string) {
     // Validate input
     this.validateInput(email, password, username);
 
@@ -94,7 +94,8 @@ export class AuthService {
         email,
         password: hashedPassword,
         username,
-        role_id: defaultRole.id_role
+        role_id: defaultRole.id_role,
+        first_name, last_name, display_name, phonenumber
       },
       include: {
         role: true
