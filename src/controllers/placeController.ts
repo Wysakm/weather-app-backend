@@ -22,7 +22,7 @@ export class PlaceController {
   // GET /api/places - ดึงข้อมูลสถานที่ทั้งหมด
   getAllPlaces = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { page = '1', limit = '10', province_id, place_type_id, gg_ref, search }: PlaceQueryParams = req.query;
+      const { page = '1', limit = '10000', province_id, place_type_id, gg_ref, search }: PlaceQueryParams = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
       const where: Prisma.PlaceWhereInput = {};

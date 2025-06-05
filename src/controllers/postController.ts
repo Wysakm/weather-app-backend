@@ -49,7 +49,7 @@ export const getAllPosts = async (req: Request, res: Response) => {
   try {
     const {
       page = '1',
-      limit = '10',
+      limit = '10000',
       search,
       status,
       id_user,
