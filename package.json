@@ -26,7 +26,12 @@
     "weather:fetch": "ts-node scripts/weather-cli.ts fetch",
     "test:weather-scoring": "ts-node test-weather-scoring.ts",
     "scoring:calculate": "ts-node -e \"require('./src/services/weatherScoringService').WeatherScoringService; console.log('🎯 Calculating weather scores...'); const s = new (require('./src/services/weatherScoringService').WeatherScoringService)(); s.calculateAllProvinceScores().then(r => console.log('✅ Done:', r.length, 'provinces'))\"",
-    "scoring:test": "ts-node test-weather-scoring.ts"
+    "scoring:test": "ts-node test-weather-scoring.ts",
+    "debug:images": "ts-node debug-images.ts",
+    "debug:images:cleanup": "ts-node debug-images.ts --cleanup",
+    "debug:images:cleanup-force": "ts-node debug-images.ts --cleanup --no-dry-run",
+    "repair:images": "ts-node repair-images.ts",
+    "repair:images:force": "ts-node repair-images.ts --no-dry-run"
   },
   "keywords": [],
   "author": "",

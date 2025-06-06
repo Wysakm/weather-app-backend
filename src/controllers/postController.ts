@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { deleteImageFromGCS } from '../services/uploadService';
+import { deleteImageFromGCS, safeDeleteImageFromGCS, validateImageUrl } from '../services/uploadService';
 
 const prisma = new PrismaClient();
 
@@ -351,50 +351,69 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     }
 
     // Validate image URL format if provided
-    if (image && image !== null && !image.startsWith('https://storage.googleapis.com/')) {
+    if (image && image !== null && !validateImageUrl(image)) {
       return res.status(400).json({
         success: false,
         message: 'URL รูปภาพไม่ถูกต้อง กรุณาใช้ endpoint upload-image ก่อน'
       });
     }
 
-    // ถ้ามีการเปลี่ยนรูปภาพ ให้ลบรูปเก่าออกจาก GCS
-    if (image !== existingPost.image && existingPost.image) {
-      await deleteImageFromGCS(existingPost.image);
-    }
+    let rollbackImageDeletion: (() => Promise<void>) | null = null;
 
-    // อัปเดต post
-    const updatedPost = await prisma.post.update({
-      where: { id_post: id },
-      data: {
-        ...(title && { title }),
-        ...(body && { body }),
-        ...(image !== undefined && { image }),
-        ...(status && { status }),
-        ...(id_place && { id_place })
-      },
-      include: {
-        user: {
-          select: {
-            id_user: true,
-            username: true,
-            email: true
-          }
+    try {
+      // ถ้ามีการเปลี่ยนรูปภาพ ให้ลบรูปเก่าออกจาก GCS แต่เตรียม rollback function
+      if (image !== existingPost.image && existingPost.image) {
+        console.log(`🔄 Image change detected. Old: ${existingPost.image}, New: ${image}`);
+        rollbackImageDeletion = await safeDeleteImageFromGCS(existingPost.image);
+      }
+
+      // อัปเดต post ใน database transaction
+      const updatedPost = await prisma.post.update({
+        where: { id_post: id },
+        data: {
+          ...(title && { title }),
+          ...(body && { body }),
+          ...(image !== undefined && { image }),
+          ...(status && { status }),
+          ...(id_place && { id_place })
         },
-        place: {
-          include: {
-            place_type: true,
-            province: true
+        include: {
+          user: {
+            select: {
+              id_user: true,
+              username: true,
+              email: true
+            }
+          },
+          place: {
+            include: {
+              place_type: true,
+              province: true
+            }
           }
         }
-      }
-    });
+      });
 
-    res.json({
-      success: true,
-      message: 'อัปเดต post สำเร็จ',
-      data: updatedPost
-    });
+      console.log(`✅ Post updated successfully: ${id}`);
+      
+      res.json({
+        success: true,
+        message: 'อัปเดต post สำเร็จ',
+        data: updatedPost
+      });
+
+    } catch (updateError) {
+      console.error('❌ Error updating post, attempting rollback:', updateError);
+      
+      // If database update failed and we deleted an image, log the issue
+      if (rollbackImageDeletion) {
+        console.log('⚠️ Database update failed after image deletion - manual intervention may be required');
+        console.log(`Original image URL: ${existingPost.image}`);
+        await rollbackImageDeletion();
+      }
+      
+      throw updateError; // Re-throw to be caught by outer catch block
+    }
 
   } catch (error) {
     console.error('Error updating post:', error);
