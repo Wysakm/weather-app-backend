@@ -13,6 +13,9 @@ const router = Router();
 router.post('/register', registerLimiter, AuthController.register);
 router.post('/login', loginLimiter, passport.authenticate('local', { session: false }), AuthController.login);
 
+// Google OAuth route
+router.post('/google', loginLimiter, AuthController.googleLogin);
+
 // Password reset routes with rate limiting
 router.post('/forgot-password', passwordResetLimiter, AuthController.forgotPassword);
 router.post('/reset-password', passwordResetLimiter, AuthController.resetPassword);

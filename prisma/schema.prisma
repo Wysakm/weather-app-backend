@@ -17,6 +17,7 @@ model User {
   password     String
   role_id      String
   phonenumber  String?
+  google_id    String?  @unique // Add Google ID field
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
   is_verified  Boolean  @default(false)

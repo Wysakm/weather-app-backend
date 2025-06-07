@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { GoogleAuthService } from '../services/googleAuth.service';
 
 export class AuthController {
   // Register
@@ -196,6 +197,43 @@ export class AuthController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  // Google OAuth Login
+  static async googleLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { credential } = req.body;
+
+      if (!credential) {
+        res.status(400).json({
+          success: false,
+          message: 'Google credential is required'
+        });
+        return;
+      }
+
+      // Verify Google token and get user info
+      const googleData = await GoogleAuthService.verifyGoogleToken(credential);
+      
+      // Login or register user
+      const result = await GoogleAuthService.loginOrRegisterWithGoogle(googleData);
+
+      res.json({
+        success: true,
+        data: {
+          user: result.user,
+          token: result.token,
+          isNewUser: result.isNewUser
+        },
+        message: result.isNewUser ? 'Account created successfully' : 'Login successful'
+      });
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Google login failed'
+      });
     }
   }
 }
