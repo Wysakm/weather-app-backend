@@ -11,6 +11,7 @@ import weatherRoutes from './routes/weatherRoutes';
 import weatherScoreRoutes from './routes/weatherScoreRoutes';
 import aqiRoutes from './routes/aqiRoutes';
 import uploadRoutes from './routes/upload.Routes';
+import searchRoutes from './routes/search.routes';
 import { errorHandler } from './middleware/error.middleware';
 import dotenv from 'dotenv';
 
@@ -35,6 +36,7 @@ app.use('/api/provinces', provinceRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/weather', weatherScoreRoutes); // Weather Scoring System routes
 app.use('/api/aqi', aqiRoutes);
+app.use('/api/search', searchRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
