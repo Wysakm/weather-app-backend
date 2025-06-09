@@ -192,6 +192,12 @@ export class SearchController {
                     where: { status: 'approved' }
                   }
                 }
+              },
+              posts: {
+                select: {
+                  image: true,
+                },
+                take: 1
               }
             },
             take: 5, // Top 5 places per province
