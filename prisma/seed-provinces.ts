@@ -38,16 +38,52 @@ const provinces = [
     "latitude": 12.6113,
     "longitude": 102.1035
   },
+   {
+    "province_name": "Chonburi",
+    "latitude": 13.3611,
+    "longitude": 100.9847
+  },
+   {
+    "province_name": "Chiang Mai",
+    "latitude": 18.7883,
+    "longitude": 98.9853
+  },
+   {
+    "province_name": "Nakhon Nayok",
+    "latitude": 14.2057,
+    "longitude": 101.2131
+  },
+   {
+    "province_name": "Pathum Thani",
+    "latitude": 14.0208,
+    "longitude": 100.5235
+  },
+    {
+    "province_name": "Phuket",
+    "latitude": 7.8804,
+    "longitude": 98.3923
+  },
+    {
+    "province_name": "Ratchaburi",
+    "latitude": 13.5282,
+    "longitude": 99.8134
+  },
+    {
+    "province_name": "Samut Songkhram",
+    "latitude": 13.4125,
+    "longitude": 100.0024
+  },
+    {
+    "province_name": "Saraburi",
+    "latitude": 14.5289,
+    "longitude": 100.9108
+  },
   // {
   //   "province_name": "Chachoengsao",
   //   "latitude": 13.6904,
   //   "longitude": 101.0772
   // },
-  {
-    "province_name": "Chonburi",
-    "latitude": 13.3611,
-    "longitude": 100.9847
-  },
+ 
   // {
   //   "province_name": "Chai Nat",
   //   "latitude": 15.1851,
@@ -68,11 +104,7 @@ const provinces = [
   //   "latitude": 19.9071,
   //   "longitude": 99.8305
   // },
-  {
-    "province_name": "Chiang Mai",
-    "latitude": 18.7883,
-    "longitude": 98.9853
-  },
+ 
   // {
   //   "province_name": "Trang",
   //   "latitude": 7.5593,
@@ -88,11 +120,7 @@ const provinces = [
   //   "latitude": 16.8839,
   //   "longitude": 99.1258
   // },
-  {
-    "province_name": "Nakhon Nayok",
-    "latitude": 14.2057,
-    "longitude": 101.2131
-  },
+ 
   // {
   //   "province_name": "Nakhon Pathom",
   //   "latitude": 13.8196,
@@ -143,11 +171,7 @@ const provinces = [
   //   "latitude": 14.9953,
   //   "longitude": 103.1029
   // },
-  {
-    "province_name": "Pathum Thani",
-    "latitude": 14.0208,
-    "longitude": 100.5235
-  },
+ 
   // {
   //   "province_name": "Prachuap Khiri Khan",
   //   "latitude": 11.8126,
@@ -208,11 +232,7 @@ const provinces = [
   //   "latitude": 18.1445,
   //   "longitude": 100.1405
   // },
-  {
-    "province_name": "Phuket",
-    "latitude": 7.8804,
-    "longitude": 98.3923
-  },
+
   // {
   //   "province_name": "Maha Sarakham",
   //   "latitude": 16.1851,
@@ -253,11 +273,7 @@ const provinces = [
   //   "latitude": 12.6833,
   //   "longitude": 101.2372
   // },
-  {
-    "province_name": "Ratchaburi",
-    "latitude": 13.5282,
-    "longitude": 99.8134
-  },
+
   // {
   //   "province_name": "Lopburi",
   //   "latitude": 14.7995,
@@ -303,11 +319,7 @@ const provinces = [
   //   "latitude": 13.5990,
   //   "longitude": 100.5998
   // },
-  {
-    "province_name": "Samut Songkhram",
-    "latitude": 13.4125,
-    "longitude": 100.0024
-  },
+
   // {
   //   "province_name": "Samut Sakhon",
   //   "latitude": 13.5475,
@@ -318,11 +330,7 @@ const provinces = [
   //   "latitude": 13.8244,
   //   "longitude": 102.0645
   // },
-  {
-    "province_name": "Saraburi",
-    "latitude": 14.5289,
-    "longitude": 100.9108
-  },
+
   // {
   //   "province_name": "Sing Buri",
   //   "latitude": 14.8907,
