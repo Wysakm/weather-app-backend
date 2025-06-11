@@ -321,11 +321,16 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     }
 
     // ตรวจสอบสิทธิ์ในการเปลี่ยน status (เฉพาะ admin/moderator)
+    // ถ้า user ธรรมดาส่ง status มา ให้ reset เป็น pending แทนการ error
     if (status && userRole !== 'ADMIN' && userRole !== 'MODERATOR') {
-      return res.status(403).json({
-        success: false,
-        message: 'คุณไม่มีสิทธิ์ในการเปลี่ยนสถานะ post'
-      });
+      // อนุญาตให้ user ธรรมดาส่ง status มาได้ แต่จะ reset เป็น pending เสมอ
+      if (status !== 'pending') {
+        return res.status(403).json({
+          success: false,
+          message: 'User ธรรมดาสามารถตั้งสถานะเป็น pending เท่านั้น'
+        });
+      }
+      // ถ้าส่ง pending มา ให้ผ่าน
     }
 
     // ตรวจสอบ status values
