@@ -14,6 +14,6 @@ app.listen(PORT, () => {
   
   // เริ่ม optimized weather scheduler (ใช้ตัวเดียวแทนของเดิม 3 ตัว)
   
- startWeatherScheduler();
+ //startWeatherScheduler();
   console.log('✅ Server is running with optimized automatic weather fetching');
 });
